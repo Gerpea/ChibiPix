@@ -12,9 +12,11 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "konva": "^10.0.2",
     "next": "15.5.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-konva": "^19.0.10"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
