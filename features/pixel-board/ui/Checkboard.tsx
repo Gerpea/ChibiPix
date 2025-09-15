@@ -15,7 +15,7 @@ export const Checkerboard = () => {
           y={y * PIXEL_SIZE}
           width={PIXEL_SIZE}
           height={PIXEL_SIZE}
-          fill={(x + y) % 2 === 0 ? '#eee' : '#ccc'}
+          fill={(x + y) % 2 === 0 ? '#cecece' : '#ffffff'}
         />
       );
     }

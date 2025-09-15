@@ -1,17 +1,23 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { Checkerboard } from './Checkboard';
 import { usePixelStore } from '../model/pixelStore';
 import { useHistoryStore } from '@/features/history/model/historyStore';
+import { useLayerStore } from '@/features/layers/model/layerStore';
 
 export const PixelBoard: React.FC = () => {
-  const { BOARD_WIDTH, BOARD_HEIGHT, PIXEL_SIZE, pixels, setPixels } =
-    usePixelStore();
+  const { layers, setLayerPixels, activeLayerId } = useLayerStore();
+  const { BOARD_HEIGHT, BOARD_WIDTH, PIXEL_SIZE } = usePixelStore();
   const { push } = useHistoryStore();
+  const layer = useMemo(
+    () => layers.find((l) => l.id === activeLayerId),
+    [layers, activeLayerId]
+  );
+  const pixels = layer?.pixels || [];
 
   const { primaryColor, secondaryColor, currentTool } = useToolbarStore();
   const pointerColor = useRef(primaryColor);
@@ -20,7 +26,7 @@ export const PixelBoard: React.FC = () => {
   const drawPixel = (row: number, col: number, color: string) => {
     const newPixels = pixels.map((arr) => arr.slice());
     newPixels[row][col] = color;
-    setPixels(newPixels);
+    setLayerPixels(activeLayerId, newPixels);
   };
 
   const fillPixels = (startRow: number, startCol: number, color: string) => {
@@ -49,10 +55,12 @@ export const PixelBoard: React.FC = () => {
       stack.push([row, col - 1]);
     }
 
-    setPixels(newPixels);
+    setLayerPixels(activeLayerId, newPixels);
   };
 
   const handlePaint = (row: number, col: number) => {
+    if (!layer?.visible) return;
+
     if (currentTool === 'pencil') {
       drawPixel(row, col, pointerColor.current);
     } else if (currentTool === 'eraser') {
@@ -63,6 +71,7 @@ export const PixelBoard: React.FC = () => {
   };
 
   const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!layer?.visible) return;
     const pos = e.target.getStage()?.getPointerPosition();
     if (!pos) return null;
     const col = Math.floor(pos.x / PIXEL_SIZE);
@@ -95,39 +104,43 @@ export const PixelBoard: React.FC = () => {
       onContextMenu={(e) => e.evt.preventDefault()}
     >
       <Checkerboard />
-      <Layer>
-        {pixels.map((rowArr, row) =>
-          rowArr.map((color, col) => (
-            <Rect
-              key={`${row}-${col}`}
-              x={col * PIXEL_SIZE}
-              y={row * PIXEL_SIZE}
-              width={PIXEL_SIZE}
-              height={PIXEL_SIZE}
-              fill={color === 'transparent' ? undefined : color}
-              stroke="#ccc"
-              onMouseDown={(e) => {
-                push(pixels);
-                e.evt.preventDefault();
-                isDrawing.current = true;
-                pointerColor.current =
-                  e.evt.button === 2 ? secondaryColor : primaryColor;
-                const pos = getPointerPos(e);
-                if (pos) handlePaint(pos.row, pos.col);
-              }}
-              onMouseEnter={(e) => {
-                if (!isDrawing.current) return;
-                const pos = getPointerPos(e);
-                if (
-                  pos &&
-                  (currentTool === 'pencil' || currentTool === 'eraser')
-                )
-                  handlePaint(pos.row, pos.col);
-              }}
-            />
-          ))
-        )}
-      </Layer>
+      {layers.map(
+        (layer) =>
+          layer.visible && (
+            <Layer key={`${layer.id}`}>
+              {layer.pixels.map((rowArr, row) =>
+                rowArr.map((color, col) => (
+                  <Rect
+                    key={`${layer.id}-${row}-${col}`}
+                    x={col * PIXEL_SIZE}
+                    y={row * PIXEL_SIZE}
+                    width={PIXEL_SIZE}
+                    height={PIXEL_SIZE}
+                    fill={color === 'transparent' ? undefined : color}
+                    onMouseDown={(e) => {
+                      push();
+                      e.evt.preventDefault();
+                      isDrawing.current = true;
+                      pointerColor.current =
+                        e.evt.button === 2 ? secondaryColor : primaryColor;
+                      const pos = getPointerPos(e);
+                      if (pos) handlePaint(pos.row, pos.col);
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isDrawing.current) return;
+                      const pos = getPointerPos(e);
+                      if (
+                        pos &&
+                        (currentTool === 'pencil' || currentTool === 'eraser')
+                      )
+                        handlePaint(pos.row, pos.col);
+                    }}
+                  />
+                ))
+              )}
+            </Layer>
+          )
+      )}
     </Stage>
   );
 };

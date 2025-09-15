@@ -1,14 +1,13 @@
-// src/features/history/model/historyStore.ts
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { usePixelStore } from '@/features/pixel-board/model/pixelStore';
+import { Layer, useLayerStore } from '@/features/layers/model/layerStore';
 
 interface HistoryState {
-  past: string[][][];
-  future: string[][][];
+  past: Layer[][];
+  future: Layer[][];
+  push: () => void;
   undo: () => void;
   redo: () => void;
-  push: (newPixels: string[][]) => void;
   clear: () => void;
 }
 
@@ -18,50 +17,68 @@ export const useHistoryStore = create<HistoryState>()(
       past: [],
       future: [],
 
+      push: () => {
+        const layers = useLayerStore.getState().layers.map((l) => ({
+          id: l.id,
+          pixels: l.pixels.map((r) => [...r]),
+          visible: l.visible,
+          name: l.name,
+        }));
+        set({ past: [...get().past, layers], future: [] });
+      },
+
       undo: () => {
         const { past, future } = get();
-        const pixelStore = usePixelStore.getState();
-
         if (past.length === 0) return;
 
-        const previous = past[past.length - 1];
+        const currentLayers = useLayerStore.getState().layers.map((l) => ({
+          id: l.id,
+          pixels: l.pixels.map((r) => [...r]),
+          visible: l.visible,
+          name: l.name,
+        }));
 
-        set({
-          past: past.slice(0, -1),
-          future: [pixelStore.pixels.map((row) => [...row]), ...future],
+        const previous = past[past.length - 1] as Layer[];
+
+        // Restore full layers array
+        useLayerStore.setState({
+          layers: previous.map((l) => ({
+            id: l.id,
+            pixels: l.pixels.map((r) => [...r]),
+            visible: l.visible,
+            name: l.name,
+          })),
+          activeLayerId: previous[0]?.id ?? null,
         });
 
-        // Update pixel store to restore the previous state
-        pixelStore.setPixels(previous.map((row) => [...row]));
+        set({ past: past.slice(0, -1), future: [currentLayers, ...future] });
       },
 
       redo: () => {
         const { past, future } = get();
-        const pixelStore = usePixelStore.getState();
-
         if (future.length === 0) return;
 
-        const next = future[0];
+        const currentLayers = useLayerStore.getState().layers.map((l) => ({
+          id: l.id,
+          pixels: l.pixels.map((r) => [...r]),
+          visible: l.visible,
+          name: l.name,
+        }));
 
-        set({
-          past: [...past, pixelStore.pixels.map((row) => [...row])],
-          future: future.slice(1),
+        const next = future[0] as Layer[];
+
+        // Restore full layers array
+        useLayerStore.setState({
+          layers: next.map((l) => ({
+            id: l.id,
+            pixels: l.pixels.map((r) => [...r]),
+            visible: l.visible,
+            name: l.name,
+          })),
+          activeLayerId: next[0]?.id ?? null,
         });
 
-        // Update pixel store to restore the next state
-        pixelStore.setPixels(next.map((row) => [...row]));
-      },
-
-      push: (newPixels) => {
-        const { past } = get();
-
-        // Deep copy to prevent reference issues
-        const deepCopy = newPixels.map((row) => [...row]);
-
-        set({
-          past: [...past, deepCopy],
-          future: [], // Clear redo stack whenever a new action is added
-        });
+        set({ past: [...past, currentLayers], future: future.slice(1) });
       },
 
       clear: () => set({ past: [], future: [] }),

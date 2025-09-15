@@ -7,7 +7,7 @@
 - 🎨 **Pixel Editor** – Draw, color, and edit your characters pixel by pixel.
   - [x] Implement basic drawing tools (pen, eraser, fill)
   - [x] Add color palette and selection
-  - [ ] Support layers and undo/redo
+  - [x] Support layers and undo/redo
 
 - 🤖 **Character Generator** – Generate pixel avatars or game sprites automatically.
   - [ ] Create random character generator
