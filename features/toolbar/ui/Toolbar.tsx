@@ -3,9 +3,18 @@
 import React from 'react';
 import { SketchPicker } from 'react-color';
 import { Tool, useToolbarStore } from '../model/toolbarStore';
-import { EraserIcon, PencilIcon, DropletIcon, Repeat2Icon } from 'lucide-react';
+import {
+  EraserIcon,
+  PencilIcon,
+  DropletIcon,
+  Repeat2Icon,
+  RotateCcwIcon,
+  RotateCwIcon,
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
+import { usePixelStore } from '@/features/pixel-board/model/pixelStore';
+import { Button } from '@/shared/ui/Button';
 
 export const Toolbar: React.FC = () => {
   const {
@@ -90,7 +99,7 @@ export const Toolbar: React.FC = () => {
           {/* Swap button as small overlay */}
           <button
             onClick={swapColors}
-            className="absolute -top-11/12 left-1/2 z-10 m-0 flex h-fit w-fit -translate-x-1/2 cursor-pointer items-center justify-center p-0"
+            className="absolute -top-4 left-1/2 z-10 m-0 flex h-fit w-fit -translate-x-1/2 cursor-pointer items-center justify-center p-0"
             title="Swap colors"
           >
             <Repeat2Icon className="h-4 w-4" />

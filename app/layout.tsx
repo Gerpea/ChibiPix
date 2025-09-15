@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import { HistoryHotkeys } from '@/features/history/ui/HistoryHotkeys';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,6 +29,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} flex h-full w-full flex-col antialiased`}
       >
         {children}
+        <HistoryHotkeys />
       </body>
     </html>
   );
