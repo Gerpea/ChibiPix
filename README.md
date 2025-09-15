@@ -5,8 +5,8 @@
 ## Features (Todo)
 
 - 🎨 **Pixel Editor** – Draw, color, and edit your characters pixel by pixel.
-  - [ ] Implement basic drawing tools (pen, eraser, fill)
-  - [ ] Add color palette and selection
+  - [x] Implement basic drawing tools (pen, eraser, fill)
+  - [x] Add color palette and selection
   - [ ] Support layers and undo/redo
 
 - 🤖 **Character Generator** – Generate pixel avatars or game sprites automatically.
