@@ -92,24 +92,25 @@ export const useLayerStore = create<LayerStoreState>()(
 
         setActiveLayer: (id) => set({ activeLayerId: id }),
 
-        setLayerPixels: (id, pixels) => {
+        setLayerPixels: (
+          layerId: string,
+          pixels: { x: number; y: number; color: number }[]
+        ) =>
           set((state) => {
-            const layers = state.layers.map((l) => {
-              if (l.id !== id) return l;
-              const newPixels = new Map(l.pixels);
-              pixels.forEach(({ x, y, color }) => {
-                const key = `${x},${y}`;
-                if (color === 0) {
-                  newPixels.delete(key); // Remove transparent pixels
-                } else {
-                  newPixels.set(key, color); // Set non-transparent pixels
-                }
-              });
-              return { ...l, pixels: newPixels };
+            const layer = state.layers.find((l) => l.id === layerId);
+            if (!layer) return state;
+            const newPixels = new Map(layer.pixels);
+            pixels.forEach(({ x, y, color }) => {
+              const key = `${x},${y}`;
+              if (color === 0) newPixels.delete(key);
+              else newPixels.set(key, color);
             });
-            return { layers };
-          });
-        },
+            return {
+              layers: state.layers.map((l) =>
+                l.id === layerId ? { ...l, pixels: newPixels } : l
+              ),
+            };
+          }),
 
         toggleVisibility: (id) => {
           set((state) => {

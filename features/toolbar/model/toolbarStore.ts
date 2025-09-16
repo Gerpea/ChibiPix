@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Tool = 'pencil' | 'fill' | 'eraser';
+export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan';
 
 export interface ToolbarStore {
   primaryColor: string;

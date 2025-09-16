@@ -10,6 +10,7 @@ import {
   Repeat2Icon,
   RotateCcwIcon,
   RotateCwIcon,
+  MoveIcon,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
@@ -44,6 +45,9 @@ export const Toolbar: React.FC = () => {
         </ToggleGroupItem>
         <ToggleGroupItem value="eraser" className="rounded border p-2">
           <EraserIcon />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="pan" className="rounded border p-2">
+          <MoveIcon />
         </ToggleGroupItem>
       </ToggleGroup>
 

@@ -15,7 +15,7 @@ export default function Home() {
           <Toolbar />
         </aside>
 
-        <main className="flex h-full w-full items-center justify-center bg-gray-200 p-4">
+        <main className="flex h-full w-full items-center justify-center bg-gray-200">
           <PixelBoard />
         </main>
 
