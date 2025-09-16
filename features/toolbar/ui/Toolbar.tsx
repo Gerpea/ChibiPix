@@ -8,14 +8,37 @@ import {
   PencilIcon,
   DropletIcon,
   Repeat2Icon,
-  RotateCcwIcon,
-  RotateCwIcon,
   MoveIcon,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
-import { usePixelStore } from '@/features/pixel-board/model/pixelStore';
-import { Button } from '@/shared/ui/Button';
+
+const rgbaToHex = (r: number, g: number, b: number, a: number): string => {
+  // Validate inputs
+  if (
+    r < 0 ||
+    r > 255 ||
+    g < 0 ||
+    g > 255 ||
+    b < 0 ||
+    b > 255 ||
+    a < 0 ||
+    a > 1
+  ) {
+    throw new Error('RGBA values out of range');
+  }
+
+  // Convert RGB to hex and alpha (0-1) to 0-255 hex
+  const rHex = r.toString(16).padStart(2, '0');
+  const gHex = g.toString(16).padStart(2, '0');
+  const bHex = b.toString(16).padStart(2, '0');
+  const aHex = Math.round(a * 255)
+    .toString(16)
+    .padStart(2, '0');
+
+  // Return 8-digit hex (RRGGBBAA)
+  return `#${rHex}${gHex}${bHex}${aHex}`.toUpperCase();
+};
 
 export const Toolbar: React.FC = () => {
   const {
@@ -70,7 +93,12 @@ export const Toolbar: React.FC = () => {
                 color={primaryColor}
                 onChange={(color) =>
                   setPrimaryColor(
-                    `rgba(${color.rgb.r},${color.rgb.g},${color.rgb.b},${color.rgb.a})`
+                    rgbaToHex(
+                      color.rgb.r,
+                      color.rgb.g,
+                      color.rgb.b,
+                      color.rgb.a || 0
+                    )
                   )
                 }
               />
@@ -93,7 +121,12 @@ export const Toolbar: React.FC = () => {
                 color={secondaryColor}
                 onChange={(color) =>
                   setSecondaryColor(
-                    `rgba(${color.rgb.r},${color.rgb.g},${color.rgb.b},${color.rgb.a})`
+                    rgbaToHex(
+                      color.rgb.r,
+                      color.rgb.g,
+                      color.rgb.b,
+                      color.rgb.a || 0
+                    )
                   )
                 }
               />
