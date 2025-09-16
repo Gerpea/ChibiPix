@@ -28,6 +28,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/shared/ui/Input';
 import { ScrollArea } from '@/shared/ui/ScrollArea';
+import { usePixelStore } from '@/features/pixel-board/model/pixelStore';
+
+// Utility function to convert 32-bit integer color to hex string
+const intToHex = (color: number): string => {
+  if (color === 0) return 'transparent';
+  return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
+};
 
 interface LayerItemProps {
   id: string;
@@ -66,25 +73,28 @@ const LayerItem: React.FC<LayerItemProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rows = layer.pixels.length;
-    const cols = layer.pixels[0].length;
-    const pixelSize = 2; // preview scale
+    const pixelSize = 2;
+    canvas.width = layer.width * pixelSize;
+    canvas.height = layer.height * pixelSize;
 
-    canvas.width = cols * pixelSize;
-    canvas.height = rows * pixelSize;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    const checkerSize = pixelSize * 4;
+    for (let y = 0; y < canvas.height; y += checkerSize) {
+      for (let x = 0; x < canvas.width; x += checkerSize) {
         ctx.fillStyle =
-          layer.pixels[r][c] === 'transparent'
-            ? 'rgba(0,0,0,0)'
-            : layer.pixels[r][c];
-        ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+          (x / checkerSize + y / checkerSize) % 2 === 0 ? '#fff' : '#ccc';
+        ctx.fillRect(x, y, checkerSize, checkerSize);
       }
     }
-  }, [layer.pixels]);
+
+    // Draw non-transparent pixels from Map
+    for (const [key, color] of layer.pixels.entries()) {
+      const [x, y] = key.split(',').map(Number);
+      if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) {
+        ctx.fillStyle = intToHex(color);
+        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }, [layer.pixels, layer.width, layer.height]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -93,16 +103,20 @@ const LayerItem: React.FC<LayerItemProps> = ({
   };
 
   const handleDuplicate = () => {
-    const newPixels = layer.pixels.map((row: string[]) => [...row]);
-    const newLayer = {
-      id: Date.now().toString(),
-      name: layer.name + ' copy',
-      visible: layer.visible,
-      pixels: newPixels,
-    };
     useLayerStore
       .getState()
-      .addLayer(newLayer.pixels[0].length, newPixels.length, newLayer.name);
+      .addLayer(layer.width, layer.height, `${layer.name} copy`);
+    const newLayerId =
+      useLayerStore.getState().layers[
+        useLayerStore.getState().layers.length - 1
+      ].id;
+    useLayerStore.getState().setLayerPixels(
+      newLayerId,
+      Array.from(layer.pixels.entries()).map(([key, color]) => {
+        const [x, y] = key.split(',').map(Number);
+        return { x, y, color };
+      })
+    );
   };
 
   return (
@@ -196,6 +210,7 @@ const LayerItem: React.FC<LayerItemProps> = ({
 export const LayerPanel: React.FC = () => {
   const { layers, activeLayerId, addLayer, moveLayer, removeLayer } =
     useLayerStore();
+  const { BOARD_WIDTH, BOARD_HEIGHT } = usePixelStore();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
@@ -219,16 +234,21 @@ export const LayerPanel: React.FC = () => {
   };
 
   const handleDuplicate = () => {
-    const newPixels = layer!.pixels.map((row: string[]) => [...row]);
-    const newLayer = {
-      id: Date.now().toString(),
-      name: layer!.name + ' copy',
-      visible: layer!.visible,
-      pixels: newPixels,
-    };
+    if (!layer) return;
     useLayerStore
       .getState()
-      .addLayer(newLayer.pixels[0].length, newPixels.length, newLayer.name);
+      .addLayer(layer.width, layer.height, `${layer.name} copy`);
+    const newLayerId =
+      useLayerStore.getState().layers[
+        useLayerStore.getState().layers.length - 1
+      ].id;
+    useLayerStore.getState().setLayerPixels(
+      newLayerId,
+      Array.from(layer.pixels.entries()).map(([key, color]) => {
+        const [x, y] = key.split(',').map(Number);
+        return { x, y, color };
+      })
+    );
   };
 
   return (
@@ -264,16 +284,21 @@ export const LayerPanel: React.FC = () => {
       </ScrollArea>
 
       <div className="mt-auto flex justify-center gap-2">
-        <Button onClick={() => addLayer(32, 32)} size="icon" variant="outline">
+        <Button
+          onClick={() => addLayer(BOARD_WIDTH, BOARD_HEIGHT)}
+          size="icon"
+          variant="outline"
+        >
           <PlusIcon />
         </Button>
         <Button onClick={() => handleDuplicate()} size="icon" variant="outline">
           <CopyIcon />
         </Button>
         <Button
-          onClick={(e) => removeLayer(layer!.id)}
+          onClick={() => layer && removeLayer(layer.id)}
           size="icon"
           variant="outline"
+          disabled={!layer}
         >
           <TrashIcon />
         </Button>
