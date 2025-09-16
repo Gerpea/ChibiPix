@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
-import { Stage, Layer, Rect } from 'react-konva';
+import React, { useRef, useMemo, useEffect } from 'react';
+import { Stage, Layer, Image, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
-import { Checkerboard } from './Checkboard';
 import { usePixelStore } from '../model/pixelStore';
 import { useHistoryStore } from '@/features/history/model/historyStore';
 import { useLayerStore } from '@/features/layers/model/layerStore';
+import { Checkerboard } from './Checkerboard';
 
-// Utility functions for color conversion
 const hexToInt = (hex: string): number => {
   if (hex === 'transparent') return 0;
   const cleaned = hex.replace('#', '');
@@ -28,11 +27,90 @@ export const PixelBoard: React.FC = () => {
   const { primaryColor, secondaryColor, currentTool } = useToolbarStore();
   const pointerColor = useRef(hexToInt(primaryColor));
   const isDrawing = useRef(false);
+  const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const imageRefs = useRef<Map<string, Konva.Image>>(new Map());
 
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
     [layers, activeLayerId]
   );
+
+  useEffect(() => {
+    console.log(
+      'Updating canvas buffers for layers:',
+      layers.map((l) => ({
+        id: l.id,
+        pixelCount: l.pixels.size,
+      }))
+    );
+
+    layers.forEach((layer) => {
+      let canvas = canvasRefs.current.get(layer.id);
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvasRefs.current.set(layer.id, canvas);
+      }
+      canvas.width = layer.width * PIXEL_SIZE;
+      canvas.height = layer.height * PIXEL_SIZE;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      console.log(`Drawing ${layer.pixels.size} pixels for layer ${layer.id}`);
+      for (const [key, color] of layer.pixels.entries()) {
+        const [x, y] = key.split(',').map(Number);
+        if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) {
+          const hexColor = intToHex(color);
+          if (hexColor !== 'transparent') {
+            ctx.fillStyle = hexColor;
+            ctx.fillRect(
+              x * PIXEL_SIZE,
+              y * PIXEL_SIZE,
+              PIXEL_SIZE,
+              PIXEL_SIZE
+            );
+          }
+        }
+      }
+    });
+
+    layers.forEach((layer) => {
+      const imageNode = imageRefs.current.get(layer.id);
+      const canvas = canvasRefs.current.get(layer.id);
+      if (imageNode && canvas) {
+        imageNode.image(canvas);
+        imageNode.getLayer()?.batchDraw();
+      }
+    });
+
+    const layerIds = new Set(layers.map((l) => l.id));
+    for (const id of canvasRefs.current.keys()) {
+      if (!layerIds.has(id)) {
+        console.log(`Cleaning up canvas for layer ${id}`);
+        canvasRefs.current.delete(id);
+      }
+    }
+    for (const id of imageRefs.current.keys()) {
+      if (!layerIds.has(id)) {
+        imageRefs.current.delete(id);
+      }
+    }
+  }, [
+    JSON.stringify(
+      layers.map((l) => ({
+        id: l.id,
+        pixels: Array.from(l.pixels.entries()),
+        width: l.width,
+        height: l.height,
+      }))
+    ),
+    PIXEL_SIZE,
+  ]);
+
+  useEffect(() => {
+    pointerColor.current = hexToInt(primaryColor);
+  }, [primaryColor]);
 
   const drawPixel = (row: number, col: number, color: number) => {
     if (
@@ -43,6 +121,9 @@ export const PixelBoard: React.FC = () => {
       col >= layer.width
     )
       return;
+    console.log(
+      `Drawing pixel at (${col}, ${row}) with color ${intToHex(color)} on layer ${activeLayerId}`
+    );
     setLayerPixels(activeLayerId, [{ x: col, y: row, color }]);
   };
 
@@ -87,6 +168,7 @@ export const PixelBoard: React.FC = () => {
       stack.push([row, col - 1]);
     }
 
+    console.log(`Filling ${newPixels.length} pixels on layer ${activeLayerId}`);
     setLayerPixels(activeLayerId, newPixels);
   };
 
@@ -113,7 +195,6 @@ export const PixelBoard: React.FC = () => {
     return { row, col };
   };
 
-  // Map tool to cursor style
   const getCursor = () => {
     switch (currentTool) {
       case 'pencil':
@@ -142,40 +223,43 @@ export const PixelBoard: React.FC = () => {
         (layer) =>
           layer.visible && (
             <Layer key={`${layer.id}`}>
-              {Array.from({ length: layer.height }, (_, y) =>
-                Array.from({ length: layer.width }, (_, x) => {
-                  const color = layer.pixels.get(`${x},${y}`) ?? 0;
-                  return (
-                    <Rect
-                      key={`${layer.id}-${y}-${x}`}
-                      x={x * PIXEL_SIZE}
-                      y={y * PIXEL_SIZE}
-                      width={PIXEL_SIZE}
-                      height={PIXEL_SIZE}
-                      fill={color === 0 ? undefined : intToHex(color)}
-                      onMouseDown={(e) => {
-                        push();
-                        e.evt.preventDefault();
-                        isDrawing.current = true;
-                        pointerColor.current = hexToInt(
-                          e.evt.button === 2 ? secondaryColor : primaryColor
-                        );
-                        const pos = getPointerPos(e);
-                        if (pos) handlePaint(pos.row, pos.col);
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isDrawing.current) return;
-                        const pos = getPointerPos(e);
-                        if (
-                          pos &&
-                          (currentTool === 'pencil' || currentTool === 'eraser')
-                        )
-                          handlePaint(pos.row, pos.col);
-                      }}
-                    />
+              <Image
+                ref={(node) => {
+                  if (node) {
+                    imageRefs.current.set(layer.id, node);
+                  } else {
+                    imageRefs.current.delete(layer.id);
+                  }
+                }}
+                image={canvasRefs.current.get(layer.id)}
+                width={layer.width * PIXEL_SIZE}
+                height={layer.height * PIXEL_SIZE}
+              />
+              <Rect
+                x={0}
+                y={0}
+                width={layer.width * PIXEL_SIZE}
+                height={layer.height * PIXEL_SIZE}
+                onMouseDown={(e) => {
+                  push();
+                  e.evt.preventDefault();
+                  isDrawing.current = true;
+                  pointerColor.current = hexToInt(
+                    e.evt.button === 2 ? secondaryColor : primaryColor
                   );
-                })
-              )}
+                  const pos = getPointerPos(e);
+                  if (pos) handlePaint(pos.row, pos.col);
+                }}
+                onMouseMove={(e) => {
+                  if (!isDrawing.current) return;
+                  const pos = getPointerPos(e);
+                  if (
+                    pos &&
+                    (currentTool === 'pencil' || currentTool === 'eraser')
+                  )
+                    handlePaint(pos.row, pos.col);
+                }}
+              />
             </Layer>
           )
       )}
