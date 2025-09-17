@@ -14,6 +14,7 @@ import { usePixelStore } from '../model/pixelStore';
 import { useHistoryStore } from '@/features/history/model/historyStore';
 import { useLayerStore } from '@/features/layers/model/layerStore';
 import { Checkerboard } from './Checkerboard';
+import { Minimap } from './Minimap';
 
 const hexToInt = (hex: string): number => {
   if (hex === 'transparent') return 0;
@@ -48,13 +49,45 @@ export const PixelBoard: React.FC = () => {
   const pendingPixels = useRef<
     Map<string, { x: number; y: number; color: number }[]>
   >(new Map());
+  const [worldBounds, setWorldBounds] = useState({
+    minX: 0,
+    minY: 0,
+    maxX: 32,
+    maxY: 32,
+  });
 
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
     [layers, activeLayerId]
   );
 
-  // Initialize canvases for all layers
+  // Calculate world bounds
+  useEffect(() => {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    layers.forEach((layer) => {
+      if (layer.visible) {
+        for (const [key] of layer.pixels.entries()) {
+          const [x, y] = key.split(',').map(Number);
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + 1);
+          maxY = Math.max(maxY, y + 1);
+        }
+      }
+    });
+    if (minX === Infinity) {
+      minX = 0;
+      minY = 0;
+      maxX = 32;
+      maxY = 32;
+    }
+    setWorldBounds({ minX, minY, maxX, maxY });
+  }, [layers]);
+
+  // Initialize canvases
   useEffect(() => {
     layers.forEach((layer) => {
       if (!canvasRefs.current.get(layer.id)) {
@@ -64,7 +97,6 @@ export const PixelBoard: React.FC = () => {
         canvasRefs.current.set(layer.id, canvas);
       }
     });
-    // Clean up unused canvases
     const layerIds = new Set(layers.map((l) => l.id));
     for (const id of canvasRefs.current.keys()) {
       if (!layerIds.has(id)) {
@@ -78,7 +110,7 @@ export const PixelBoard: React.FC = () => {
     pointerColor.current = hexToInt(primaryColor);
   }, [primaryColor]);
 
-  // Redraw layers when necessary
+  // Redraw main layers
   const redrawLayers = useCallback(() => {
     if (layers.length === 0) return;
 
@@ -141,14 +173,13 @@ export const PixelBoard: React.FC = () => {
     PIXEL_SIZE,
   ]);
 
-  // Update stage size on resize
+  // Update stage size
   useEffect(() => {
     const updateSize = () => {
       if (!parentRef.current) return;
       const { width, height } = parentRef.current.getBoundingClientRect();
       setStageWidth(width);
       setStageHeight(height);
-      // Update canvas sizes
       canvasRefs.current.forEach((canvas) => {
         canvas.width = width;
         canvas.height = height;
@@ -180,7 +211,6 @@ export const PixelBoard: React.FC = () => {
       `Drawing pixel at (${col}, ${row}) with color ${intToHex(color)} on layer ${activeLayerId}`
     );
 
-    // Update canvas immediately
     const canvas = canvasRefs.current.get(activeLayerId);
     const imageNode = imageRefs.current.get(activeLayerId);
     if (canvas && imageNode) {
@@ -200,7 +230,6 @@ export const PixelBoard: React.FC = () => {
       }
     }
 
-    // Batch pixel updates
     if (!pendingPixels.current.has(activeLayerId)) {
       pendingPixels.current.set(activeLayerId, []);
     }
@@ -228,14 +257,13 @@ export const PixelBoard: React.FC = () => {
     };
   }, [flushPendingPixels]);
 
-  // Fill pixels using flood-fill algorithm with boundary checks
+  // Fill pixels
   const fillPixels = (startRow: number, startCol: number, color: number) => {
     if (!layer || !layer.visible) return;
     const pixels = layer.pixels;
     const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
     if (targetColor === color) return;
 
-    // Define canvas boundaries
     const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
     const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
     const maxPixelX = Math.ceil(
@@ -278,7 +306,6 @@ export const PixelBoard: React.FC = () => {
     console.log(`Filling ${newPixels.length} pixels on layer ${activeLayerId}`);
     setLayerPixels(activeLayerId, newPixels);
 
-    // Update canvas
     const canvas = canvasRefs.current.get(activeLayerId);
     const imageNode = imageRefs.current.get(activeLayerId);
     if (canvas && imageNode) {
@@ -337,7 +364,7 @@ export const PixelBoard: React.FC = () => {
     }
   };
 
-  // Handle zoom via wheel
+  // Handle zoom
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const scaleBy = 1.1;
@@ -458,6 +485,18 @@ export const PixelBoard: React.FC = () => {
             )
         )}
       </Stage>
+      <Minimap
+        layers={layers}
+        stageWidth={stageWidth}
+        stageHeight={stageHeight}
+        stageScale={stageScale}
+        panWorldX={panWorldX}
+        panWorldY={panWorldY}
+        worldBounds={worldBounds}
+        setPanWorldX={setPanWorldX}
+        setPanWorldY={setPanWorldY}
+        pixelSize={PIXEL_SIZE}
+      />
     </div>
   );
 };

@@ -74,25 +74,57 @@ const LayerItem: React.FC<LayerItemProps> = ({
     if (!ctx) return;
 
     const pixelSize = 2;
-    canvas.width = layer.width * pixelSize;
-    canvas.height = layer.height * pixelSize;
 
+    // Compute bounds to include all drawn pixels, even outside nominal layer width/height
+    let minX = 0;
+    let maxX = layer.width - 1;
+    let minY = 0;
+    let maxY = layer.height - 1;
+
+    if (layer.pixels.size > 0) {
+      minX = Infinity;
+      maxX = -Infinity;
+      minY = Infinity;
+      maxY = -Infinity;
+      for (const key of layer.pixels.keys()) {
+        const [x, y] = key.split(',').map(Number);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    const effectiveWidth = Math.max(1, maxX - minX + 1);
+    const effectiveHeight = Math.max(1, maxY - minY + 1);
+
+    canvas.width = effectiveWidth * pixelSize;
+    canvas.height = effectiveHeight * pixelSize;
+
+    // Draw checkerboard background
     const checkerSize = pixelSize * 4;
     for (let y = 0; y < canvas.height; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
         ctx.fillStyle =
-          (x / checkerSize + y / checkerSize) % 2 === 0 ? '#fff' : '#ccc';
+          (Math.floor(x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0
+            ? '#fff'
+            : '#ccc';
         ctx.fillRect(x, y, checkerSize, checkerSize);
       }
     }
 
-    // Draw non-transparent pixels from Map
+    // Draw non-transparent pixels from Map, offset to fit in effective bounds
     for (const [key, color] of layer.pixels.entries()) {
       const [x, y] = key.split(',').map(Number);
-      if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) {
-        ctx.fillStyle = intToHex(color);
-        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-      }
+      const offsetX = x - minX;
+      const offsetY = y - minY;
+      ctx.fillStyle = intToHex(color);
+      ctx.fillRect(
+        offsetX * pixelSize,
+        offsetY * pixelSize,
+        pixelSize,
+        pixelSize
+      );
     }
   }, [layer.pixels, layer.width, layer.height]);
 
