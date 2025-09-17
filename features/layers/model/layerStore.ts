@@ -1,4 +1,10 @@
 import { useHistoryStore } from '@/features/history/model/historyStore';
+import {
+  exportLayers,
+  ExportProgress,
+  importLayers,
+  ImportProgress,
+} from '@/features/serialization/utils';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
@@ -7,14 +13,12 @@ export interface Layer {
   name: string;
   visible: boolean;
   pixels: Map<string, number>;
-  width: number;
-  height: number;
 }
 
 interface LayerStoreState {
   layers: Layer[];
   activeLayerId: string;
-  addLayer: (width: number, height: number, name?: string) => void;
+  addLayer: (name?: string) => void;
   removeLayer: (id: string) => void;
   setActiveLayer: (id: string) => void;
   setLayerPixels: (
@@ -24,20 +28,23 @@ interface LayerStoreState {
   toggleVisibility: (id: string) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
+  exportData: (
+    onProgress: (progress: ExportProgress) => void
+  ) => Promise<string>;
+  importData: (
+    data: string,
+    onProgress: (progress: ImportProgress) => void
+  ) => Promise<void>;
 }
 
 export const useLayerStore = create<LayerStoreState>()(
   devtools(
     (set, get) => {
-      const defaultWidth = 32;
-      const defaultHeight = 32;
       const defaultLayer: Layer = {
         id: Date.now().toString(),
         name: 'Layer 1',
         visible: true,
-        pixels: new Map(), // Sparse storage, only non-transparent pixels
-        width: defaultWidth,
-        height: defaultHeight,
+        pixels: new Map(),
       };
 
       const pushHistory = () => {
@@ -48,14 +55,12 @@ export const useLayerStore = create<LayerStoreState>()(
         layers: [defaultLayer],
         activeLayerId: defaultLayer.id,
 
-        addLayer: (width, height, name = 'Layer') => {
+        addLayer: (name = 'Layer') => {
           const newLayer: Layer = {
             id: Date.now().toString(),
             name: `${name} ${get().layers.length + 1}`,
             visible: true,
             pixels: new Map(),
-            width,
-            height,
           };
           set((state) => {
             const layers = [...state.layers, newLayer];
@@ -78,8 +83,6 @@ export const useLayerStore = create<LayerStoreState>()(
                 name: 'Layer 1',
                 visible: true,
                 pixels: new Map(),
-                width: defaultWidth,
-                height: defaultHeight,
               };
               pushHistory();
               return { layers: [defaultLayer], activeLayerId: defaultLayer.id };
@@ -105,6 +108,7 @@ export const useLayerStore = create<LayerStoreState>()(
               if (color === 0) newPixels.delete(key);
               else newPixels.set(key, color);
             });
+            pushHistory();
             return {
               layers: state.layers.map((l) =>
                 l.id === layerId ? { ...l, pixels: newPixels } : l
@@ -149,6 +153,33 @@ export const useLayerStore = create<LayerStoreState>()(
             pushHistory();
             return { layers };
           });
+        },
+
+        exportData: async (onProgress) => {
+          try {
+            const data = await exportLayers(get().layers, onProgress);
+            console.log('Exported .layr data:', data);
+            return data;
+          } catch (error) {
+            console.error('Export failed:', (error as Error).message);
+            throw error;
+          }
+        },
+
+        importData: async (data, onProgress) => {
+          try {
+            const layers = await importLayers(data, onProgress);
+            set((state) => {
+              const activeLayerId =
+                layers.length > 0 ? layers[0].id : state.activeLayerId;
+              console.log('Imported layers:', layers);
+              pushHistory();
+              return { layers, activeLayerId };
+            });
+          } catch (error) {
+            console.error('Import failed:', (error as Error).message);
+            throw error;
+          }
         },
       };
     },

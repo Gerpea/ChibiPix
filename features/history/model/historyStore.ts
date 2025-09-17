@@ -23,8 +23,6 @@ export const useHistoryStore = create<HistoryState>()(
           pixels: new Map(l.pixels), // Deep copy of Map
           visible: l.visible,
           name: l.name,
-          width: l.width,
-          height: l.height,
         }));
         set({ past: [...get().past, layers], future: [] });
       },
@@ -38,8 +36,6 @@ export const useHistoryStore = create<HistoryState>()(
           pixels: new Map(l.pixels), // Deep copy of Map
           visible: l.visible,
           name: l.name,
-          width: l.width,
-          height: l.height,
         }));
 
         const previous = past[past.length - 1] as Layer[];
@@ -51,8 +47,6 @@ export const useHistoryStore = create<HistoryState>()(
             pixels: new Map(l.pixels), // Deep copy of Map
             visible: l.visible,
             name: l.name,
-            width: l.width,
-            height: l.height,
           })),
           activeLayerId: previous[0]?.id ?? null,
         });
@@ -69,8 +63,6 @@ export const useHistoryStore = create<HistoryState>()(
           pixels: new Map(l.pixels), // Deep copy of Map
           visible: l.visible,
           name: l.name,
-          width: l.width,
-          height: l.height,
         }));
 
         const next = future[0] as Layer[];
@@ -82,8 +74,6 @@ export const useHistoryStore = create<HistoryState>()(
             pixels: new Map(l.pixels),
             visible: l.visible,
             name: l.name,
-            width: l.width,
-            height: l.height,
           })),
           activeLayerId: next[0]?.id ?? null,
         });

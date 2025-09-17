@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
     "start": "next start",
+    "build": "next build --turbopack",
+    "build:workers": "tsc -p tsconfig.worker.json",
+    "watch:workers": "tsc -p tsconfig.worker.json --watch",
     "lint": "eslint . --ext .ts,.tsx --ignore-path .gitignore",
     "lint:fix": "eslint . --ext .ts,.tsx --fix --ignore-path .git",
     "format": "prettier --write '**/*.{ts,tsx,css}' --ignore-path .gitignore",
