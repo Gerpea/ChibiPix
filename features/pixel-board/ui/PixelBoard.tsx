@@ -31,7 +31,8 @@ export const PixelBoard: React.FC = () => {
   const { layers, setLayerPixels, activeLayerId } = useLayerStore();
   const { PIXEL_SIZE } = usePixelStore();
   const { push } = useHistoryStore();
-  const { primaryColor, secondaryColor, currentTool } = useToolbarStore();
+  const { primaryColor, secondaryColor, currentTool, toolSettings } =
+    useToolbarStore();
   const [stageWidth, setStageWidth] = useState(32);
   const [stageHeight, setStageHeight] = useState(32);
   const [stageScale, setStageScale] = useState(1);
@@ -204,7 +205,6 @@ export const PixelBoard: React.FC = () => {
     redrawLayers();
   }, [redrawLayers]);
 
-  // Draw a single pixel
   const drawPixel = (row: number, col: number, color: number) => {
     if (!layer || !layer.visible) return;
     console.log(
@@ -213,27 +213,49 @@ export const PixelBoard: React.FC = () => {
 
     const canvas = canvasRefs.current.get(activeLayerId);
     const imageNode = imageRefs.current.get(activeLayerId);
+    // Only apply brush size for pencil and eraser tools
+    const size =
+      currentTool === 'pencil' || currentTool === 'eraser'
+        ? toolSettings[currentTool]?.size || 1
+        : 1;
+    // Calculate the range to cover size x size pixels
+    const offset = Math.floor(size / 2); // Center the brush around the clicked pixel
+
     if (canvas && imageNode) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        const canvasX = (col * PIXEL_SIZE - panWorldX) * stageScale;
-        const canvasY = (row * PIXEL_SIZE - panWorldY) * stageScale;
-        const pixelSizeScreen = PIXEL_SIZE * stageScale;
+        // Draw a square of pixels based on brush size
+        for (let dy = -offset; dy < size - offset; dy++) {
+          for (let dx = -offset; dx < size - offset; dx++) {
+            const canvasX = ((col + dx) * PIXEL_SIZE - panWorldX) * stageScale;
+            const canvasY = ((row + dy) * PIXEL_SIZE - panWorldY) * stageScale;
+            const pixelSizeScreen = PIXEL_SIZE * stageScale;
 
-        ctx.fillStyle = intToHex(color);
-        ctx.clearRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
-        if (color !== 0) {
-          ctx.fillRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
+            ctx.fillStyle = intToHex(color);
+            ctx.clearRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
+            if (color !== 0) {
+              ctx.fillRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
+            }
+          }
         }
         imageNode.image(canvas);
         imageNode.getLayer()?.batchDraw();
       }
     }
 
+    // Store pending pixels for the brush area
     if (!pendingPixels.current.has(activeLayerId)) {
       pendingPixels.current.set(activeLayerId, []);
     }
-    pendingPixels.current.get(activeLayerId)!.push({ x: col, y: row, color });
+    for (let dy = -offset; dy < size - offset; dy++) {
+      for (let dx = -offset; dx < size - offset; dx++) {
+        pendingPixels.current.get(activeLayerId)!.push({
+          x: col + dx,
+          y: row + dy,
+          color,
+        });
+      }
+    }
   };
 
   // Flush pending pixel updates

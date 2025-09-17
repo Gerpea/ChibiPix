@@ -6,7 +6,7 @@ import { Topbar } from '@/features/topbar/ui/Topbar';
 export default function Home() {
   return (
     <div className="flex h-full w-full flex-col gap-4 bg-gray-100 p-4">
-      <header className="col-span-3 border border-gray-300 bg-white p-2">
+      <header className="col-span-3 w-full border border-gray-300 bg-white p-2">
         <Topbar />
       </header>
 

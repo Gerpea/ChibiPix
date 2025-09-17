@@ -74,6 +74,8 @@ const LayerItem: React.FC<LayerItemProps> = ({
     if (!ctx) return;
 
     const pixelSize = 2;
+    const padding = 4; // Padding in pixels around the content
+    const previewSize = 48; // Canvas size (48x48 pixels)
 
     // Compute bounds to include all drawn pixels, even outside nominal layer width/height
     let minX = 0;
@@ -98,10 +100,24 @@ const LayerItem: React.FC<LayerItemProps> = ({
     const effectiveWidth = Math.max(1, maxX - minX + 1);
     const effectiveHeight = Math.max(1, maxY - minY + 1);
 
-    canvas.width = effectiveWidth * pixelSize;
-    canvas.height = effectiveHeight * pixelSize;
+    // Set canvas size
+    canvas.width = previewSize;
+    canvas.height = previewSize;
 
-    // Draw checkerboard background
+    // Calculate scale to fit content within previewSize while preserving aspect ratio
+    const contentWidth = effectiveWidth * pixelSize;
+    const contentHeight = effectiveHeight * pixelSize;
+    const scale = Math.min(
+      (previewSize - 2 * padding) / contentWidth,
+      (previewSize - 2 * padding) / contentHeight
+    );
+
+    const scaledWidth = contentWidth * scale;
+    const scaledHeight = contentHeight * scale;
+    const offsetX = (previewSize - scaledWidth) / 2;
+    const offsetY = (previewSize - scaledHeight) / 2;
+
+    // Draw checkerboard background across entire canvas
     const checkerSize = pixelSize * 4;
     for (let y = 0; y < canvas.height; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
@@ -113,19 +129,21 @@ const LayerItem: React.FC<LayerItemProps> = ({
       }
     }
 
+    // Save context and apply scaling
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
     // Draw non-transparent pixels from Map, offset to fit in effective bounds
     for (const [key, color] of layer.pixels.entries()) {
       const [x, y] = key.split(',').map(Number);
-      const offsetX = x - minX;
-      const offsetY = y - minY;
+      const adjustedX = (x - minX) * pixelSize;
+      const adjustedY = (y - minY) * pixelSize;
       ctx.fillStyle = intToHex(color);
-      ctx.fillRect(
-        offsetX * pixelSize,
-        offsetY * pixelSize,
-        pixelSize,
-        pixelSize
-      );
+      ctx.fillRect(adjustedX, adjustedY, pixelSize, pixelSize);
     }
+
+    ctx.restore();
   }, [layer.pixels, layer.width, layer.height]);
 
   const style = {
@@ -156,7 +174,9 @@ const LayerItem: React.FC<LayerItemProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`relative flex items-center overflow-hidden rounded border bg-gray-100 p-2 ${active ? 'border-blue-500 bg-blue-100' : 'border-gray-200'}`}
+      className={`relative flex items-center overflow-hidden rounded border bg-gray-100 p-2 ${
+        active ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
+      }`}
       onClick={() => setActiveLayer(layer.id)}
     >
       {/* Left: Preview */}
