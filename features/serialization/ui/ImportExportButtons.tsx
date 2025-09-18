@@ -60,18 +60,20 @@ export function ImportExportButtons() {
       <Button
         onClick={handleExport}
         disabled={isExporting}
+        size={'icon'}
+        variant={'secondary'}
         className="flex items-center gap-2"
       >
         <Download className="h-4 w-4" />
-        {isExporting ? 'Exporting...' : 'Export'}
       </Button>
       <Button
         onClick={handleImport}
         disabled={isImporting}
+        size={'icon'}
+        variant={'secondary'}
         className="flex items-center gap-2"
       >
         <Upload className="h-4 w-4" />
-        {isImporting ? 'Importing...' : 'Import'}
       </Button>
       <input
         type="file"

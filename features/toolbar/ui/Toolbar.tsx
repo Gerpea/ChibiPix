@@ -53,23 +53,22 @@ export const Toolbar: React.FC = () => {
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      {/* Tool selection */}
       <ToggleGroup
         type="single"
         value={currentTool}
         onValueChange={(value: Tool) => setCurrentTool(value)}
         className="flex flex-col gap-2"
       >
-        <ToggleGroupItem value="pencil" className="rounded border p-2">
+        <ToggleGroupItem value="pencil">
           <PencilIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="fill" className="rounded border p-2">
+        <ToggleGroupItem value="fill">
           <DropletIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="eraser" className="rounded border p-2">
+        <ToggleGroupItem value="eraser">
           <EraserIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="pan" className="rounded border p-2">
+        <ToggleGroupItem value="pan">
           <MoveIcon />
         </ToggleGroupItem>
       </ToggleGroup>

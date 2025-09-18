@@ -27,12 +27,24 @@ const intToHex = (color: number): string => {
   return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
 };
 
+// Adjusts the alpha channel of a color integer based on opacity (0-100)
+const adjustColorOpacity = (color: number, opacity: number): number => {
+  if (color === 0) return 0; // Transparent stays transparent
+  const normalizedOpacity = opacity / 100; // Convert to 0-1
+  const r = (color >> 24) & 0xff;
+  const g = (color >> 16) & 0xff;
+  const b = (color >> 8) & 0xff;
+  const a = Math.round(normalizedOpacity * 255); // New alpha
+  return (r << 24) | (g << 16) | (b << 8) | a;
+};
+
 export const PixelBoard: React.FC = () => {
   const { layers, setLayerPixels, activeLayerId } = useLayerStore();
   const { PIXEL_SIZE } = usePixelStore();
   const { push } = useHistoryStore();
   const { primaryColor, secondaryColor, currentTool, toolSettings } =
     useToolbarStore();
+
   const [stageWidth, setStageWidth] = useState(32);
   const [stageHeight, setStageHeight] = useState(32);
   const [stageScale, setStageScale] = useState(1);
@@ -47,15 +59,22 @@ export const PixelBoard: React.FC = () => {
   const imageRefs = useRef<Map<string, Konva.Image>>(new Map());
   const stageRef = useRef<Konva.Stage | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+
   const pendingPixels = useRef<
     Map<string, { x: number; y: number; color: number }[]>
   >(new Map());
+
   const [worldBounds, setWorldBounds] = useState({
     minX: 0,
     minY: 0,
     maxX: 32,
     maxY: 32,
   });
+
+  const [hoverPixel, setHoverPixel] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
 
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
@@ -189,6 +208,7 @@ export const PixelBoard: React.FC = () => {
     };
 
     updateSize();
+    const ResizeObserver = window.ResizeObserver;
     const resizeObserver = new ResizeObserver(updateSize);
     if (parentRef.current) {
       resizeObserver.observe(parentRef.current);
@@ -207,33 +227,39 @@ export const PixelBoard: React.FC = () => {
 
   const drawPixel = (row: number, col: number, color: number) => {
     if (!layer || !layer.visible) return;
-    console.log(
-      `Drawing pixel at (${col}, ${row}) with color ${intToHex(color)} on layer ${activeLayerId}`
-    );
+
+    const opacity =
+      currentTool === 'pencil' ||
+      currentTool === 'eraser' ||
+      currentTool == 'fill'
+        ? toolSettings[currentTool].opacity
+        : 100;
+
+    const adjustedColor =
+      currentTool === 'eraser' ? 0 : adjustColorOpacity(color, opacity);
 
     const canvas = canvasRefs.current.get(activeLayerId);
     const imageNode = imageRefs.current.get(activeLayerId);
-    // Only apply brush size for pencil and eraser tools
+
     const size =
       currentTool === 'pencil' || currentTool === 'eraser'
         ? toolSettings[currentTool]?.size || 1
         : 1;
-    // Calculate the range to cover size x size pixels
-    const offset = Math.floor(size / 2); // Center the brush around the clicked pixel
+
+    const offset = Math.floor(size / 2);
 
     if (canvas && imageNode) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Draw a square of pixels based on brush size
         for (let dy = -offset; dy < size - offset; dy++) {
           for (let dx = -offset; dx < size - offset; dx++) {
             const canvasX = ((col + dx) * PIXEL_SIZE - panWorldX) * stageScale;
             const canvasY = ((row + dy) * PIXEL_SIZE - panWorldY) * stageScale;
             const pixelSizeScreen = PIXEL_SIZE * stageScale;
 
-            ctx.fillStyle = intToHex(color);
+            ctx.fillStyle = intToHex(adjustedColor);
             ctx.clearRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
-            if (color !== 0) {
+            if (adjustedColor !== 0) {
               ctx.fillRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
             }
           }
@@ -243,7 +269,6 @@ export const PixelBoard: React.FC = () => {
       }
     }
 
-    // Store pending pixels for the brush area
     if (!pendingPixels.current.has(activeLayerId)) {
       pendingPixels.current.set(activeLayerId, []);
     }
@@ -252,13 +277,12 @@ export const PixelBoard: React.FC = () => {
         pendingPixels.current.get(activeLayerId)!.push({
           x: col + dx,
           y: row + dy,
-          color,
+          color: adjustedColor,
         });
       }
     }
   };
 
-  // Flush pending pixel updates
   const flushPendingPixels = useCallback(() => {
     pendingPixels.current.forEach((pixels, layerId) => {
       if (pixels.length > 0) {
@@ -268,7 +292,6 @@ export const PixelBoard: React.FC = () => {
     pendingPixels.current.clear();
   }, [setLayerPixels]);
 
-  // Flush pixels on mouse up
   useEffect(() => {
     const handleMouseUp = () => {
       flushPendingPixels();
@@ -279,77 +302,6 @@ export const PixelBoard: React.FC = () => {
     };
   }, [flushPendingPixels]);
 
-  // Fill pixels
-  const fillPixels = (startRow: number, startCol: number, color: number) => {
-    if (!layer || !layer.visible) return;
-    const pixels = layer.pixels;
-    const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
-    if (targetColor === color) return;
-
-    const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
-    const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
-    const maxPixelX = Math.ceil(
-      (panWorldX + stageWidth / stageScale) / PIXEL_SIZE
-    );
-    const maxPixelY = Math.ceil(
-      (panWorldY + stageHeight / stageScale) / PIXEL_SIZE
-    );
-
-    const newPixels: { x: number; y: number; color: number }[] = [];
-    const stack = [[startRow, startCol]];
-    const visited = new Set<string>();
-
-    while (stack.length) {
-      const [row, col] = stack.pop()!;
-      const key = `${col},${row}`;
-      if (visited.has(key)) continue;
-
-      if (
-        col < minPixelX ||
-        col >= maxPixelX ||
-        row < minPixelY ||
-        row >= maxPixelY
-      ) {
-        continue;
-      }
-
-      const currentColor = pixels.get(key) ?? 0;
-      if (currentColor !== targetColor) continue;
-
-      visited.add(key);
-      newPixels.push({ x: col, y: row, color });
-
-      stack.push([row + 1, col]);
-      stack.push([row - 1, col]);
-      stack.push([row, col + 1]);
-      stack.push([row, col - 1]);
-    }
-
-    console.log(`Filling ${newPixels.length} pixels on layer ${activeLayerId}`);
-    setLayerPixels(activeLayerId, newPixels);
-
-    const canvas = canvasRefs.current.get(activeLayerId);
-    const imageNode = imageRefs.current.get(activeLayerId);
-    if (canvas && imageNode) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const pixelSizeScreen = PIXEL_SIZE * stageScale;
-        newPixels.forEach(({ x, y, color }) => {
-          const canvasX = (x * PIXEL_SIZE - panWorldX) * stageScale;
-          const canvasY = (y * PIXEL_SIZE - panWorldY) * stageScale;
-          ctx.fillStyle = intToHex(color);
-          ctx.clearRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
-          if (color !== 0) {
-            ctx.fillRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
-          }
-        });
-        imageNode.image(canvas);
-        imageNode.getLayer()?.batchDraw();
-      }
-    }
-  };
-
-  // Handle mouse events
   const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (!layer?.visible) return null;
     const pos = e.target.getStage()?.getPointerPosition();
@@ -366,9 +318,42 @@ export const PixelBoard: React.FC = () => {
       drawPixel(row, col, pointerColor.current);
     } else if (currentTool === 'eraser') {
       drawPixel(row, col, 0);
-    } else if (currentTool === 'fill') {
-      fillPixels(row, col, pointerColor.current);
     }
+  };
+
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    if (isPanning.current && currentTool === 'pan' && lastPanPos.current) {
+      const currentPos = stage.getPointerPosition();
+      if (currentPos) {
+        const deltaX = currentPos.x - lastPanPos.current.x;
+        const deltaY = currentPos.y - lastPanPos.current.y;
+        setPanWorldX((prev) => prev - deltaX / stageScale);
+        setPanWorldY((prev) => prev - deltaY / stageScale);
+        lastPanPos.current = currentPos;
+      }
+      return;
+    }
+
+    const pos = getPointerPos(e);
+    if (pos && (currentTool === 'pencil' || currentTool == 'eraser')) {
+      setHoverPixel(pos);
+    } else {
+      setHoverPixel(null);
+    }
+
+    if (
+      isDrawing.current &&
+      (currentTool === 'pencil' || currentTool === 'eraser')
+    ) {
+      if (pos) handlePaint(pos.row, pos.col);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverPixel(null);
   };
 
   const getCursor = () => {
@@ -386,7 +371,6 @@ export const PixelBoard: React.FC = () => {
     }
   };
 
-  // Handle zoom
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const scaleBy = 1.1;
@@ -434,29 +418,8 @@ export const PixelBoard: React.FC = () => {
           const pos = getPointerPos(e);
           if (pos) handlePaint(pos.row, pos.col);
         }}
-        onMouseMove={(e) => {
-          const stage = stageRef.current;
-          if (!stage) return;
-          if (
-            isPanning.current &&
-            currentTool === 'pan' &&
-            lastPanPos.current
-          ) {
-            const currentPos = stage.getPointerPosition();
-            if (currentPos) {
-              const deltaX = currentPos.x - lastPanPos.current.x;
-              const deltaY = currentPos.y - lastPanPos.current.y;
-              setPanWorldX((prev) => prev - deltaX / stageScale);
-              setPanWorldY((prev) => prev - deltaY / stageScale);
-              lastPanPos.current = currentPos;
-            }
-            return;
-          }
-          if (!isDrawing.current) return;
-          if (currentTool !== 'pencil' && currentTool !== 'eraser') return;
-          const pos = getPointerPos(e);
-          if (pos) handlePaint(pos.row, pos.col);
-        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         onMouseUp={() => {
           isDrawing.current = false;
           isPanning.current = false;
@@ -506,6 +469,41 @@ export const PixelBoard: React.FC = () => {
               </Layer>
             )
         )}
+
+        {/* Highlight preview for pencil tool */}
+        {hoverPixel &&
+          (currentTool === 'pencil' || currentTool === 'eraser') && (
+            <Layer>
+              {(() => {
+                const size = toolSettings[currentTool].size || 1;
+                const offset = Math.floor(size / 2);
+                const highlightRects = [];
+                for (let dy = -offset; dy < size - offset; dy++) {
+                  for (let dx = -offset; dx < size - offset; dx++) {
+                    const x =
+                      ((hoverPixel.col + dx) * PIXEL_SIZE - panWorldX) *
+                      stageScale;
+                    const y =
+                      ((hoverPixel.row + dy) * PIXEL_SIZE - panWorldY) *
+                      stageScale;
+                    highlightRects.push(
+                      <Rect
+                        key={`${dx},${dy}`}
+                        x={x}
+                        y={y}
+                        width={PIXEL_SIZE * stageScale}
+                        height={PIXEL_SIZE * stageScale}
+                        fill="rgba(0, 0, 0, 0.3)"
+                        stroke="gray"
+                        strokeWidth={1}
+                      />
+                    );
+                  }
+                }
+                return highlightRects;
+              })()}
+            </Layer>
+          )}
       </Stage>
       <Minimap
         layers={layers}

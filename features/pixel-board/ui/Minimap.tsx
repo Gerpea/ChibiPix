@@ -5,12 +5,6 @@ import { Layer } from '@/features/layers/model/layerStore';
 
 const MINIMAP_SIZE = 150;
 
-const hexToInt = (hex: string): number => {
-  if (hex === 'transparent') return 0;
-  const cleaned = hex.replace('#', '');
-  return parseInt(cleaned + (cleaned.length === 6 ? 'FF' : ''), 16);
-};
-
 const intToHex = (color: number): string => {
   if (color === 0) return 'transparent';
   return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
@@ -51,8 +45,16 @@ export const Minimap: React.FC<MinimapProps> = ({
   useEffect(() => {
     if (!minimapCanvasRef.current) {
       minimapCanvasRef.current = document.createElement('canvas');
-      minimapCanvasRef.current.width = MINIMAP_SIZE;
-      minimapCanvasRef.current.height = MINIMAP_SIZE;
+      const dpr = window.devicePixelRatio || 1;
+      minimapCanvasRef.current.width = MINIMAP_SIZE * dpr;
+      minimapCanvasRef.current.height = MINIMAP_SIZE * dpr;
+      minimapCanvasRef.current.style.width = `${MINIMAP_SIZE}px`;
+      minimapCanvasRef.current.style.height = `${MINIMAP_SIZE}px`;
+      const ctx = minimapCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+        ctx.imageSmoothingEnabled = false;
+      }
     }
     setIsCanvasReady(true);
   }, []);
@@ -103,11 +105,23 @@ export const Minimap: React.FC<MinimapProps> = ({
       const offsetMinimapX = (MINIMAP_SIZE - drawnWidth) / 2;
       const offsetMinimapY = (MINIMAP_SIZE - drawnHeight) / 2;
 
-      // Clear canvas for transparent background
+      // Clear canvas
       ctx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
 
       ctx.save();
       ctx.translate(offsetMinimapX, offsetMinimapY);
+
+      // Clip with padding for stroke overflow
+      const lineWidth = 2;
+      const halfLineWidth = lineWidth / 2;
+      ctx.beginPath();
+      ctx.rect(
+        -halfLineWidth,
+        -halfLineWidth,
+        drawnWidth + lineWidth,
+        drawnHeight + lineWidth
+      );
+      ctx.clip();
 
       // Draw pixels
       const pixelSizeScaled = pixelSize * scale;
@@ -128,9 +142,62 @@ export const Minimap: React.FC<MinimapProps> = ({
       // Draw viewport rectangle
       const viewX = (panWorldX - effectiveMinX * pixelSize) * scale;
       const viewY = (panWorldY - effectiveMinY * pixelSize) * scale;
-      ctx.strokeStyle = '#FF0000';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(viewX, viewY, viewWidth * scale, viewHeight * scale);
+      const viewWidthScaled = viewWidth * scale;
+      const viewHeightScaled = viewHeight * scale;
+
+      // Clamp viewport to content bounds
+      const clampedViewX = Math.max(
+        0,
+        Math.min(viewX, drawnWidth - viewWidthScaled)
+      );
+      const clampedViewY = Math.max(
+        0,
+        Math.min(viewY, drawnHeight - viewHeightScaled)
+      );
+
+      // Rounded rectangle parameters
+      const borderRadius = 6; // Adjust for more/less rounding
+
+      ctx.strokeStyle = '#6B7280'; // Tailwind gray-500 color
+      ctx.lineWidth = lineWidth;
+
+      // Function to draw rounded rectangle
+      const drawRoundedRect = (
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        radius: number
+      ) => {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(
+          x + width,
+          y + height,
+          x + width - radius,
+          y + height
+        );
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        ctx.stroke();
+      };
+
+      // Draw the rounded rectangle
+      drawRoundedRect(
+        ctx,
+        clampedViewX,
+        clampedViewY,
+        viewWidthScaled,
+        viewHeightScaled,
+        borderRadius
+      );
 
       ctx.restore();
 
@@ -248,7 +315,7 @@ export const Minimap: React.FC<MinimapProps> = ({
 
   return (
     <div
-      className="absolute top-2 right-2 border-2 border-gray-950"
+      className="absolute right-2 bottom-2 rounded-md border-2 border-gray-950"
       style={{
         width: MINIMAP_SIZE,
         height: MINIMAP_SIZE,
@@ -262,15 +329,13 @@ export const Minimap: React.FC<MinimapProps> = ({
         height={MINIMAP_SIZE}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMinimapDrag}
-        style={{ cursor: 'pointer' }}
+        className="absolute top-0 right-0 bottom-0 left-0 cursor-pointer"
       >
         <KonvaLayer>
           <KonvaImage
             image={minimapCanvasRef.current}
-            width={MINIMAP_SIZE}
-            height={MINIMAP_SIZE}
-            x={0}
-            y={0}
+            width={MINIMAP_SIZE - 4} // 4 - from padding size
+            height={MINIMAP_SIZE - 4}
           />
         </KonvaLayer>
       </Stage>

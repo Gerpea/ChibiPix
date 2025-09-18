@@ -9,11 +9,11 @@ export const HistoryControls = () => {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="ghost" size="icon" onClick={undo} title="Undo">
+      <Button size={'icon'} variant={'secondary'} onClick={undo} title="Undo">
         <RotateCcwIcon className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" size="icon" onClick={redo} title="Redo">
+      <Button size={'icon'} variant={'secondary'} onClick={redo} title="Redo">
         <RotateCwIcon className="h-4 w-4" />
       </Button>
     </div>

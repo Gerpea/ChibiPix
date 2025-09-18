@@ -3,8 +3,9 @@ import { create } from 'zustand';
 export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan';
 
 interface ToolSettings {
-  pencil: { size: number };
-  eraser: { size: number };
+  pencil: { size: number; opacity: number };
+  eraser: { size: number; opacity: number };
+  fill: { opacity: number };
 }
 
 export interface ToolbarStore {
@@ -24,8 +25,9 @@ export const useToolbarStore = create<ToolbarStore>((set) => ({
   secondaryColor: '#ffffff',
   currentTool: 'pencil',
   toolSettings: {
-    pencil: { size: 1 },
-    eraser: { size: 1 },
+    pencil: { size: 1, opacity: 100 },
+    eraser: { size: 1, opacity: 100 },
+    fill: { opacity: 100 },
   },
   setPrimaryColor: (color) => set({ primaryColor: color }),
   setSecondaryColor: (color) => set({ secondaryColor: color }),
@@ -37,6 +39,19 @@ export const useToolbarStore = create<ToolbarStore>((set) => ({
   setCurrentTool: (tool) => set({ currentTool: tool }),
   setToolSettings: (settings) =>
     set((state) => ({
-      toolSettings: { ...state.toolSettings, ...settings },
+      toolSettings: {
+        pencil: {
+          ...state.toolSettings.pencil,
+          ...(settings.pencil || {}),
+        },
+        eraser: {
+          ...state.toolSettings.eraser,
+          ...(settings.eraser || {}),
+        },
+        fill: {
+          ...state.toolSettings.fill,
+          ...(settings.fill || {}),
+        },
+      },
     })),
 }));

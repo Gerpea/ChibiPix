@@ -7,10 +7,10 @@ import { ImportExportButtons } from '@/features/serialization/ui/ImportExportBut
 
 export const Topbar: React.FC = () => {
   return (
-    <div className="flex w-full">
+    <div className="ml-2 flex w-full gap-4">
       <ImportExportButtons />
       <HistoryControls />
-      <ToolSettings />
+      {/* <ToolSettings /> */}
     </div>
   );
 };
