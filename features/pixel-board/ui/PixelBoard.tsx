@@ -283,6 +283,76 @@ export const PixelBoard: React.FC = () => {
     }
   };
 
+  // Fill pixels
+  const fillPixels = (startRow: number, startCol: number, color: number) => {
+    if (!layer || !layer.visible) return;
+    const pixels = layer.pixels;
+    const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
+    if (targetColor === color) return;
+
+    const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
+    const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
+    const maxPixelX = Math.ceil(
+      (panWorldX + stageWidth / stageScale) / PIXEL_SIZE
+    );
+    const maxPixelY = Math.ceil(
+      (panWorldY + stageHeight / stageScale) / PIXEL_SIZE
+    );
+
+    const newPixels: { x: number; y: number; color: number }[] = [];
+    const stack = [[startRow, startCol]];
+    const visited = new Set<string>();
+
+    while (stack.length) {
+      const [row, col] = stack.pop()!;
+      const key = `${col},${row}`;
+      if (visited.has(key)) continue;
+
+      if (
+        col < minPixelX ||
+        col >= maxPixelX ||
+        row < minPixelY ||
+        row >= maxPixelY
+      ) {
+        continue;
+      }
+
+      const currentColor = pixels.get(key) ?? 0;
+      if (currentColor !== targetColor) continue;
+
+      visited.add(key);
+      newPixels.push({ x: col, y: row, color });
+
+      stack.push([row + 1, col]);
+      stack.push([row - 1, col]);
+      stack.push([row, col + 1]);
+      stack.push([row, col - 1]);
+    }
+
+    console.log(`Filling ${newPixels.length} pixels on layer ${activeLayerId}`);
+    setLayerPixels(activeLayerId, newPixels);
+
+    const canvas = canvasRefs.current.get(activeLayerId);
+    const imageNode = imageRefs.current.get(activeLayerId);
+    if (canvas && imageNode) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const pixelSizeScreen = PIXEL_SIZE * stageScale;
+        newPixels.forEach(({ x, y, color }) => {
+          const canvasX = (x * PIXEL_SIZE - panWorldX) * stageScale;
+          const canvasY = (y * PIXEL_SIZE - panWorldY) * stageScale;
+          ctx.fillStyle = intToHex(color);
+          ctx.clearRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
+          if (color !== 0) {
+            ctx.fillRect(canvasX, canvasY, pixelSizeScreen, pixelSizeScreen);
+          }
+        });
+        imageNode.image(canvas);
+        imageNode.getLayer()?.batchDraw();
+      }
+    }
+  };
+
   const flushPendingPixels = useCallback(() => {
     pendingPixels.current.forEach((pixels, layerId) => {
       if (pixels.length > 0) {
@@ -318,6 +388,8 @@ export const PixelBoard: React.FC = () => {
       drawPixel(row, col, pointerColor.current);
     } else if (currentTool === 'eraser') {
       drawPixel(row, col, 0);
+    } else if (currentTool === 'fill') {
+      fillPixels(row, col, pointerColor.current);
     }
   };
 
@@ -409,7 +481,6 @@ export const PixelBoard: React.FC = () => {
             e.evt.preventDefault();
             return;
           }
-          push();
           e.evt.preventDefault();
           isDrawing.current = true;
           pointerColor.current = hexToInt(
