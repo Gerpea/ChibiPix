@@ -226,12 +226,12 @@ export const PixelBoard: React.FC = () => {
   }, [redrawLayers]);
 
   const drawPixel = (row: number, col: number, color: number) => {
-    if (!layer || !layer.visible) return;
+    if (!layer || !layer.visible || layer.locked) return;
 
     const opacity =
       currentTool === 'pencil' ||
       currentTool === 'eraser' ||
-      currentTool == 'fill'
+      currentTool === 'fill'
         ? toolSettings[currentTool].opacity
         : 100;
 
@@ -285,7 +285,7 @@ export const PixelBoard: React.FC = () => {
 
   // Fill pixels
   const fillPixels = (startRow: number, startCol: number, color: number) => {
-    if (!layer || !layer.visible) return;
+    if (!layer || !layer.visible || layer.locked) return;
     const pixels = layer.pixels;
     const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
     if (targetColor === color) return;
@@ -373,7 +373,7 @@ export const PixelBoard: React.FC = () => {
   }, [flushPendingPixels]);
 
   const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!layer?.visible) return null;
+    if (!layer?.visible || layer?.locked) return null;
     const pos = e.target.getStage()?.getPointerPosition();
     if (!pos) return null;
     const worldX = panWorldX + pos.x / stageScale;
@@ -384,6 +384,7 @@ export const PixelBoard: React.FC = () => {
   };
 
   const handlePaint = (row: number, col: number) => {
+    if (!layer || !layer.visible || layer.locked) return;
     if (currentTool === 'pencil') {
       drawPixel(row, col, pointerColor.current);
     } else if (currentTool === 'eraser') {
@@ -410,7 +411,7 @@ export const PixelBoard: React.FC = () => {
     }
 
     const pos = getPointerPos(e);
-    if (pos && (currentTool === 'pencil' || currentTool == 'eraser')) {
+    if (pos && (currentTool === 'pencil' || currentTool === 'eraser')) {
       setHoverPixel(pos);
     } else {
       setHoverPixel(null);
@@ -429,6 +430,14 @@ export const PixelBoard: React.FC = () => {
   };
 
   const getCursor = () => {
+    if (
+      layer?.locked &&
+      (currentTool === 'pencil' ||
+        currentTool === 'eraser' ||
+        currentTool === 'fill')
+    ) {
+      return 'not-allowed';
+    }
     switch (currentTool) {
       case 'pencil':
         return 'crosshair';
@@ -481,6 +490,7 @@ export const PixelBoard: React.FC = () => {
             e.evt.preventDefault();
             return;
           }
+          if (layer?.locked) return; // Prevent drawing on locked layer
           e.evt.preventDefault();
           isDrawing.current = true;
           pointerColor.current = hexToInt(
@@ -543,7 +553,8 @@ export const PixelBoard: React.FC = () => {
 
         {/* Highlight preview for pencil tool */}
         {hoverPixel &&
-          (currentTool === 'pencil' || currentTool === 'eraser') && (
+          (currentTool === 'pencil' || currentTool === 'eraser') &&
+          !layer?.locked && (
             <Layer>
               {(() => {
                 const size = toolSettings[currentTool].size || 1;

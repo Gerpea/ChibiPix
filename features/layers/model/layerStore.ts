@@ -12,6 +12,7 @@ export interface Layer {
   id: string;
   name: string;
   visible: boolean;
+  locked: boolean;
   pixels: Map<string, number>;
 }
 
@@ -26,6 +27,7 @@ interface LayerStoreState {
     pixels: { x: number; y: number; color: number }[]
   ) => void;
   toggleVisibility: (id: string) => void;
+  toggleLock: (id: string) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
   exportData: (
@@ -44,6 +46,7 @@ export const useLayerStore = create<LayerStoreState>()(
         id: Date.now().toString(),
         name: 'Layer 1',
         visible: true,
+        locked: false,
         pixels: new Map(),
       };
 
@@ -60,6 +63,7 @@ export const useLayerStore = create<LayerStoreState>()(
             id: Date.now().toString(),
             name: `${name} ${get().layers.length + 1}`,
             visible: true,
+            locked: false,
             pixels: new Map(),
           };
           set((state) => {
@@ -82,6 +86,7 @@ export const useLayerStore = create<LayerStoreState>()(
                 id: Date.now().toString(),
                 name: 'Layer 1',
                 visible: true,
+                locked: false,
                 pixels: new Map(),
               };
               pushHistory();
@@ -101,7 +106,7 @@ export const useLayerStore = create<LayerStoreState>()(
         ) =>
           set((state) => {
             const layer = state.layers.find((l) => l.id === layerId);
-            if (!layer) return state;
+            if (!layer || layer.locked) return state; // Prevent drawing on locked layers
             const newPixels = new Map(layer.pixels);
             pixels.forEach(({ x, y, color }) => {
               const key = `${x},${y}`;
@@ -120,6 +125,16 @@ export const useLayerStore = create<LayerStoreState>()(
           set((state) => {
             const layers = state.layers.map((l) =>
               l.id === id ? { ...l, visible: !l.visible } : l
+            );
+            pushHistory();
+            return { layers };
+          });
+        },
+
+        toggleLock: (id) => {
+          set((state) => {
+            const layers = state.layers.map((l) =>
+              l.id === id ? { ...l, locked: !l.locked } : l
             );
             pushHistory();
             return { layers };

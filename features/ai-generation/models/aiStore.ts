@@ -62,7 +62,7 @@ FORMAT EXACTLY LIKE THIS:
 COORDINATES: x and y range from 0 to 15
 COLORS: Use #RRGGBBAA format (AA = alpha/transparency, FF = opaque)
 STRATEGY: Start with outlines, then fill interiors
-PIXEL COUNT: Draw 25-55 pixels at once to create meaningful parts (outline, fill, details).
+PIXEL COUNT: Draw 125-255 pixels at once to create meaningful parts (outline, fill, details).
 POSITIONING: Center main subjects, use full canvas effectively
 COLORS: Use vibrant, contrasting colors appropriate for pixel art
 </drawing_guidelines> <examples>
@@ -86,7 +86,7 @@ OUTPUT:
 DO NOT output anything other than THOUGHTS and PIXELS
 DO NOT use invalid coordinates (outside 0-15 range)
 DO NOT use invalid color formats
-DO NOT draw too many pixels at once (max 55 per iteration)
+DO NOT draw too many pixels at once (max 255 per iteration)
 DO NOT ignore the current pixels context
 DO NOT create disconnected random pixels
 </what_not_to_do>

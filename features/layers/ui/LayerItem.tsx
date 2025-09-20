@@ -2,7 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Layer, useLayerStore } from '../model/layerStore';
-import { EyeIcon, GripIcon, EyeClosedIcon, EyeOffIcon } from 'lucide-react';
+import {
+  EyeIcon,
+  GripIcon,
+  LockIcon,
+  LockOpenIcon,
+  EyeOffIcon,
+} from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Input } from '@/shared/ui/Input';
@@ -29,7 +35,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
-  const { setActiveLayer, toggleVisibility, removeLayer, setLayerName } =
+  const { setActiveLayer, toggleVisibility, toggleLock, setLayerName } =
     useLayerStore();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(layer.name);
@@ -191,6 +197,27 @@ export const LayerItem: React.FC<LayerItemProps> = ({
                 : layer.name}
             </span>
           )}
+          <div className="flex">
+            {layer.locked ? (
+              <Button
+                size="small-icon"
+                variant="ghost"
+                className="cursor-pointer"
+                onClick={() => toggleLock(layer.id)}
+              >
+                <LockIcon className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="small-icon"
+                variant="ghost"
+                className="cursor-pointer"
+                onClick={() => toggleLock(layer.id)}
+              >
+                <LockOpenIcon className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           <GripIcon {...listeners} className="ml-auto h-4 w-4 cursor-grab" />
         </div>
       </div>
