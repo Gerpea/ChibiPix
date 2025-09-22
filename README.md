@@ -10,9 +10,7 @@
   - [x] Support layers and undo/redo
 
 - 🤖 **Character Generator** – Generate pixel avatars or game sprites automatically.
-  - [ ] Create random character generator
-  - [ ] Add preset templates (anime-style, chibi, etc.)
-  - [ ] Add customization options for generated characters
+  - [x] Create random character generator
 
 - 🎞️ **Animation Tools** – Create walk cycles, idle animations, and loops.
   - [ ] Implement frame-by-frame timeline editor

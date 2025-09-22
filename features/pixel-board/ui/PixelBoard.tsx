@@ -7,7 +7,7 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import { Stage, Layer, Image, Rect } from 'react-konva';
+import { Stage, Layer, Image, Rect, Text, Group } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { usePixelStore } from '../model/pixelStore';
@@ -15,6 +15,7 @@ import { useHistoryStore } from '@/features/history/model/historyStore';
 import { useLayerStore } from '@/features/layers/model/layerStore';
 import { Checkerboard } from './Checkerboard';
 import { Minimap } from './Minimap';
+import { useAIStore } from '@/features/ai-generation/models/aiStore';
 
 const hexToInt = (hex: string): number => {
   if (hex === 'transparent') return 0;
@@ -39,11 +40,12 @@ const adjustColorOpacity = (color: number, opacity: number): number => {
 };
 
 export const PixelBoard: React.FC = () => {
-  const { layers, setLayerPixels, activeLayerId } = useLayerStore();
+  const { layers, setLayerPixels, activeLayerId, aiAreas } = useLayerStore();
   const { PIXEL_SIZE } = usePixelStore();
   const { push } = useHistoryStore();
   const { primaryColor, secondaryColor, currentTool, toolSettings } =
     useToolbarStore();
+  const { generations, stopGeneration } = useAIStore();
 
   const [stageWidth, setStageWidth] = useState(32);
   const [stageHeight, setStageHeight] = useState(32);
@@ -59,6 +61,7 @@ export const PixelBoard: React.FC = () => {
   const imageRefs = useRef<Map<string, Konva.Image>>(new Map());
   const stageRef = useRef<Konva.Stage | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+  const aiBorderRefs = useRef<Map<string, Konva.Rect>>(new Map());
 
   const pendingPixels = useRef<
     Map<string, { x: number; y: number; color: number }[]>
@@ -75,6 +78,12 @@ export const PixelBoard: React.FC = () => {
     row: number;
     col: number;
   } | null>(null);
+
+  const activeGenerations = useMemo(
+    () =>
+      Object.values(generations).filter((gen) => gen.isGenerating && gen.area),
+    [generations]
+  );
 
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
@@ -225,6 +234,25 @@ export const PixelBoard: React.FC = () => {
     redrawLayers();
   }, [redrawLayers]);
 
+  // AI borders animation
+  useEffect(() => {
+    let anim: Konva.Animation | null = null;
+    if (activeGenerations.length > 0) {
+      anim = new Konva.Animation((frame) => {
+        if (frame) {
+          aiBorderRefs.current.forEach((rect) => {
+            rect.dashOffset(-(frame.time / 50) % 10);
+          });
+          stageRef.current?.batchDraw();
+        }
+      });
+      anim.start();
+    }
+    return () => {
+      if (anim) anim.stop();
+    };
+  }, [activeGenerations.length]);
+
   const drawPixel = (row: number, col: number, color: number) => {
     if (!layer || !layer.visible || layer.locked) return;
 
@@ -253,8 +281,21 @@ export const PixelBoard: React.FC = () => {
       if (ctx) {
         for (let dy = -offset; dy < size - offset; dy++) {
           for (let dx = -offset; dx < size - offset; dx++) {
-            const canvasX = ((col + dx) * PIXEL_SIZE - panWorldX) * stageScale;
-            const canvasY = ((row + dy) * PIXEL_SIZE - panWorldY) * stageScale;
+            const px = col + dx;
+            const py = row + dy;
+            if (
+              Object.values(aiAreas).some(
+                (area) =>
+                  px >= area.startX &&
+                  px < area.startX + 16 &&
+                  py >= area.startY &&
+                  py < area.startY + 16
+              )
+            )
+              continue;
+
+            const canvasX = (px * PIXEL_SIZE - panWorldX) * stageScale;
+            const canvasY = (py * PIXEL_SIZE - panWorldY) * stageScale;
             const pixelSizeScreen = PIXEL_SIZE * stageScale;
 
             ctx.fillStyle = intToHex(adjustedColor);
@@ -274,9 +315,21 @@ export const PixelBoard: React.FC = () => {
     }
     for (let dy = -offset; dy < size - offset; dy++) {
       for (let dx = -offset; dx < size - offset; dx++) {
+        const px = col + dx;
+        const py = row + dy;
+        if (
+          Object.values(aiAreas).some(
+            (area) =>
+              px >= area.startX &&
+              px < area.startX + 16 &&
+              py >= area.startY &&
+              py < area.startY + 16
+          )
+        )
+          continue;
         pendingPixels.current.get(activeLayerId)!.push({
-          x: col + dx,
-          y: row + dy,
+          x: px,
+          y: py,
           color: adjustedColor,
         });
       }
@@ -286,6 +339,16 @@ export const PixelBoard: React.FC = () => {
   // Fill pixels
   const fillPixels = (startRow: number, startCol: number, color: number) => {
     if (!layer || !layer.visible || layer.locked) return;
+    if (
+      Object.values(aiAreas).some(
+        (area) =>
+          startCol >= area.startX &&
+          startCol < area.startX + 16 &&
+          startRow >= area.startY &&
+          startRow < area.startY + 16
+      )
+    )
+      return;
     const pixels = layer.pixels;
     const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
     if (targetColor === color) return;
@@ -316,6 +379,17 @@ export const PixelBoard: React.FC = () => {
       ) {
         continue;
       }
+
+      if (
+        Object.values(aiAreas).some(
+          (area) =>
+            col >= area.startX &&
+            col < area.startX + 16 &&
+            row >= area.startY &&
+            row < area.startY + 16
+        )
+      )
+        continue;
 
       const currentColor = pixels.get(key) ?? 0;
       if (currentColor !== targetColor) continue;
@@ -435,6 +509,21 @@ export const PixelBoard: React.FC = () => {
       (currentTool === 'pencil' ||
         currentTool === 'eraser' ||
         currentTool === 'fill')
+    ) {
+      return 'not-allowed';
+    }
+    if (
+      (currentTool === 'pencil' ||
+        currentTool === 'eraser' ||
+        currentTool === 'fill') &&
+      hoverPixel &&
+      Object.values(aiAreas).some(
+        (area) =>
+          hoverPixel.col >= area.startX &&
+          hoverPixel.col < area.startX + 16 &&
+          hoverPixel.row >= area.startY &&
+          hoverPixel.row < area.startY + 16
+      )
     ) {
       return 'not-allowed';
     }
@@ -586,6 +675,78 @@ export const PixelBoard: React.FC = () => {
               })()}
             </Layer>
           )}
+
+        {/* AI generating areas visualization */}
+        <Layer>
+          {activeGenerations.map((gen) => {
+            const area = gen.area!;
+            const aiAreaWorldX = area.startX * PIXEL_SIZE;
+            const aiAreaWorldY = area.startY * PIXEL_SIZE;
+            const aiAreaWidth = 16 * PIXEL_SIZE;
+            const aiAreaHeight = 16 * PIXEL_SIZE;
+
+            const aiScreenX = (aiAreaWorldX - panWorldX) * stageScale;
+            const aiScreenY = (aiAreaWorldY - panWorldY) * stageScale;
+            const aiScreenWidth = aiAreaWidth * stageScale;
+            const aiScreenHeight = aiAreaHeight * stageScale;
+
+            const latestThought =
+              gen.thoughts[gen.thoughts.length - 1] || 'Generating...';
+
+            return (
+              <Group key={gen.id}>
+                <Rect
+                  ref={(node) => {
+                    if (node) {
+                      aiBorderRefs.current.set(gen.id, node);
+                    } else {
+                      aiBorderRefs.current.delete(gen.id);
+                    }
+                  }}
+                  x={aiScreenX}
+                  y={aiScreenY}
+                  width={aiScreenWidth}
+                  height={aiScreenHeight}
+                  stroke="blue"
+                  strokeWidth={2}
+                  dash={[5, 5]}
+                  fill="rgba(0, 0, 255, 0.1)"
+                />
+                <Text
+                  x={aiScreenX}
+                  y={aiScreenY}
+                  width={aiScreenWidth}
+                  height={aiScreenHeight - 30}
+                  text={latestThought}
+                  fontSize={16}
+                  align="center"
+                  verticalAlign="middle"
+                  wrap="word"
+                  fill="black"
+                />
+                {/* Stop button in top-right corner */}
+                <Group
+                  x={aiScreenX + aiScreenWidth - 30}
+                  y={aiScreenY + 10}
+                  onClick={() => stopGeneration(gen.id)}
+                  onTap={() => stopGeneration(gen.id)}
+                  listening={true}
+                >
+                  <Rect width={20} height={20} fill="red" cornerRadius={4} />
+                  <Text
+                    text="✕"
+                    fontSize={16}
+                    fill="white"
+                    align="center"
+                    verticalAlign="middle"
+                    width={20}
+                    height={20}
+                  />
+                </Group>
+              </Group>
+            );
+          })}
+        </Layer>
       </Stage>
       <Minimap
         layers={layers}

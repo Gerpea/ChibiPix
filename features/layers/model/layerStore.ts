@@ -19,15 +19,20 @@ export interface Layer {
 interface LayerStoreState {
   layers: Layer[];
   activeLayerId: string;
+  aiAreas: Record<string, { startX: number; startY: number }>;
   addLayer: (name?: string) => void;
   removeLayer: (id: string) => void;
   setActiveLayer: (id: string) => void;
   setLayerPixels: (
     id: string,
-    pixels: { x: number; y: number; color: number }[]
+    pixels: { x: number; y: number; color: number }[],
+    force?: boolean
   ) => void;
   toggleVisibility: (id: string) => void;
   toggleLock: (id: string) => void;
+  setLayerLock: (id: string, locked: boolean) => void;
+  addAIArea: (id: string, area: { startX: number; startY: number }) => void;
+  removeAIArea: (id: string) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
   exportData: (
@@ -57,6 +62,7 @@ export const useLayerStore = create<LayerStoreState>()(
       return {
         layers: [defaultLayer],
         activeLayerId: defaultLayer.id,
+        aiAreas: {},
 
         addLayer: (name = 'Layer') => {
           const newLayer: Layer = {
@@ -102,13 +108,32 @@ export const useLayerStore = create<LayerStoreState>()(
 
         setLayerPixels: (
           layerId: string,
-          pixels: { x: number; y: number; color: number }[]
+          pixels: { x: number; y: number; color: number }[],
+          force = false
         ) =>
           set((state) => {
             const layer = state.layers.find((l) => l.id === layerId);
-            if (!layer || layer.locked) return state; // Prevent drawing on locked layers
-            const newPixels = new Map(layer.pixels);
-            pixels.forEach(({ x, y, color }) => {
+            if ((!layer || layer.locked) && !force) return state; // Prevent drawing on locked layers
+
+            let filteredPixels = pixels;
+            if (!force) {
+              const aiAreas = state.aiAreas;
+              filteredPixels = pixels.filter(
+                (p) =>
+                  !Object.values(aiAreas).some(
+                    (area) =>
+                      p.x >= area.startX &&
+                      p.x < area.startX + 16 &&
+                      p.y >= area.startY &&
+                      p.y < area.startY + 16
+                  )
+              );
+            }
+
+            if (filteredPixels.length === 0) return state;
+
+            const newPixels = new Map(layer!.pixels);
+            filteredPixels.forEach(({ x, y, color }) => {
               const key = `${x},${y}`;
               if (color === 0) newPixels.delete(key);
               else newPixels.set(key, color);
@@ -133,12 +158,34 @@ export const useLayerStore = create<LayerStoreState>()(
 
         toggleLock: (id) => {
           set((state) => {
+            const layer = state.layers.find((l) => l.id === id);
+            if (!layer) return state;
             const layers = state.layers.map((l) =>
               l.id === id ? { ...l, locked: !l.locked } : l
             );
             pushHistory();
             return { layers };
           });
+        },
+
+        setLayerLock: (id, locked) => {
+          set((state) => {
+            const layers = state.layers.map((l) =>
+              l.id === id ? { ...l, locked } : l
+            );
+            pushHistory();
+            return { layers };
+          });
+        },
+
+        addAIArea: (id, area) => {
+          set({ aiAreas: { ...get().aiAreas, [id]: area } });
+        },
+
+        removeAIArea: (id) => {
+          const aiAreas = { ...get().aiAreas };
+          delete aiAreas[id];
+          set({ aiAreas });
         },
 
         moveLayer: (fromIndex, toIndex) => {

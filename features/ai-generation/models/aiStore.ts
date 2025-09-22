@@ -12,16 +12,25 @@ import { z } from 'zod';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import { hexToInt } from '@/shared/utils/colors';
 import { jsonrepair } from 'jsonrepair';
+import type { Layer } from '@/features/layers/model/layerStore';
 
-interface AIState {
+interface Generation {
+  id: string;
   prompt: string;
   isGenerating: boolean;
   error: string | null;
   progress: number;
   thoughts: string[];
-  setPrompt: (prompt: string) => void;
-  generateImage: () => Promise<void>;
-  stopGeneration: () => void;
+  abortController: AbortController | null;
+  area: { startX: number; startY: number } | null;
+}
+
+interface AIState {
+  generations: Record<string, Generation>;
+  currentPrompt: string;
+  setCurrentPrompt: (prompt: string) => void;
+  startGeneration: () => Promise<void>;
+  stopGeneration: (id: string) => void;
 }
 
 // Schema for pixel data
@@ -33,7 +42,7 @@ const pixelSchema = z.array(
   })
 );
 
-// System prompt for drawing agent (includes current pixels)
+// System prompts (unchanged, included for completeness)
 const DRAW_SYSTEM_PROMPT = `
 YOU ARE A WORLD-CLASS PIXEL ART EXPERT SPECIALIZING IN 16x16 PIXEL IMAGES. YOUR TASK IS TO CREATE STUNNING PIXEL ART BY DRAWING NEW PIXELS BASED ON THE GIVEN PROMPT AND CURRENT CANVAS STATE.<chain_of_thoughts>
 FOLLOW THIS EXACT REASONING PROCESS:
@@ -58,11 +67,10 @@ FORMAT EXACTLY LIKE THIS:
 }}
 </output_format>
 <drawing_guidelines>
-
 COORDINATES: x and y range from 0 to 15
 COLORS: Use #RRGGBBAA format (AA = alpha/transparency, FF = opaque)
 STRATEGY: Start with outlines, then fill interiors
-PIXEL COUNT: Draw 125-255 pixels at once to create meaningful parts (outline, fill, details).
+PIXEL COUNT: Draw 25-55 pixels at once to create meaningful parts (outline, fill, details).
 POSITIONING: Center main subjects, use full canvas effectively
 COLORS: Use vibrant, contrasting colors appropriate for pixel art
 </drawing_guidelines> <examples>
@@ -71,28 +79,26 @@ CURRENT PIXELS: []
 OUTPUT:
 {{
   "thoughts":  "I need to draw a red apple. I'll start with the basic circular outline in the center of the canvas, then add the stem area.",
-  "pixels": [{{"x": 32, "y": 25, "color": "#000000FF"}}, {{"x": 33, "y": 24, "color": "#000000FF"}}, {{"x": 34, "y": 25, "color": "#000000FF"}}]
+  "pixels": [{{"x": 5, "y": 5, "color": "#000000FF"}}, {{"x": 6, "y": 5, "color": "#000000FF"}}]
 }}
 PROMPT: "Blue cat"
-CURRENT PIXELS: [{{"x": 32, "y": 30, "color": "#0000FFFF"}}]
+CURRENT PIXELS: [{{"x": 5, "y": 5, "color": "#0000FFFF"}}]
 OUTPUT:
 {{
   "thoughts":  "I see there's already a blue pixel for the cat's body. I need to add the cat's head outline above it and start forming the basic cat shape.",
-  "pixels": [{{"x": 31, "y": 28, "color": "#000000FF"}}, {{"x": 32, "y": 27, "color": "#000000FF"}}, {{"x": 33, "y": 28, "color": "#000000FF"}}]
+  "pixels": [{{"x": 4, "y": 4, "color": "#000000FF"}}, {{"x": 5, "y": 3, "color": "#000000FF"}}, {{"x": 6, "y": 4, "color": "#000000FF"}}]
 }}
 </examples>
 <what_not_to_do>
-
 DO NOT output anything other than THOUGHTS and PIXELS
 DO NOT use invalid coordinates (outside 0-15 range)
 DO NOT use invalid color formats
-DO NOT draw too many pixels at once (max 255 per iteration)
+DO NOT draw too many pixels at once (max 55 per iteration)
 DO NOT ignore the current pixels context
 DO NOT create disconnected random pixels
 </what_not_to_do>
 `.trim();
 
-// System prompt for critic agent
 const CRITIC_SYSTEM_PROMPT = `
 YOU ARE A WORLD-CLASS PIXEL ART CRITIC AND EVALUATOR. YOUR EXPERTISE LIES IN ASSESSING WHETHER A 16x16 PIXEL ART IMAGE ACCURATELY REPRESENTS THE GIVEN PROMPT AND PROVIDING CONSTRUCTIVE FEEDBACK FOR IMPROVEMENT.<evaluation_chain_of_thoughts>
 FOLLOW THIS EXACT EVALUATION PROCESS:
@@ -105,14 +111,12 @@ PROVIDE specific, actionable feedback for next steps
 </evaluation_chain_of_thoughts>
 <completion_criteria>
 MARK AS COMPLETE (true) ONLY WHEN:
-
 ALL major elements from the prompt are clearly visible
 The artwork is recognizable as the requested subject
 Colors match the prompt requirements
 The composition uses the canvas effectively
 Basic details and features are present
 MARK AS INCOMPLETE (false) WHEN:
-
 Missing key elements from the prompt
 Artwork is not recognizable
 Only outlines exist without proper filling
@@ -136,7 +140,7 @@ BE ENCOURAGING but PRECISE about what needs improvement
 </feedback_guidelines>
 <examples>
 PROMPT: "Red apple"
-PIXELS: [{{"x": 32, "y": 30, "color": "#FF0000FF"}}]
+PIXELS: [{{"x": 5, "y": 5, "color": "#FF0000FF"}}]
 OUTPUT: {{"isComplete": false, "feedback": "Only one red pixel exists. Need to draw the complete apple outline first, then fill with red color and add a brown stem on top."}}
 PROMPT: "Blue cat with green eyes"
 PIXELS: [multiple pixels forming cat outline and blue fill]
@@ -154,344 +158,497 @@ DO NOT output invalid JSON format
 </what_not_to_do>
 `.trim();
 
-// System prompt for prompt optimizer
 const OPTIMIZER_SYSTEM_PROMPT = `
-YOU ARE A WORLD-CLASS PROMPT OPTIMIZATION EXPERT SPECIALIZING IN PIXEL ART GENERATION. YOUR TASK IS TO TRANSFORM BASIC USER PROMPTS INTO DETAILED, SPECIFIC INSTRUCTIONS PERFECT FOR CREATING 16x16 PIXEL ART.<optimization_chain_of_thoughts>
-FOLLOW THIS EXACT PROCESS:
-
-ANALYZE the user's basic prompt to identify the main subject
-IDENTIFY missing details crucial for pixel art (colors, style, features)
-CONSIDER the 16x16 canvas limitations and optimal composition
-ADD specific visual details, colors, and positioning guidance
-ENSURE the prompt is clear and actionable for pixel art creation
+YOU ARE A PIXEL ART PROMPT OPTIMIZER FOR TINY 16x16 CANVASES. YOUR TASK IS TO MAKE MINIMAL BUT HELPFUL ADJUSTMENTS TO USER PROMPTS, KEEPING THEM SIMPLE AND ACHIEVABLE.<optimization_chain_of_thoughts>
+FOLLOW THIS PROCESS:
+IDENTIFY the main subject from user prompt
+KEEP IT SIMPLE - 16x16 can only fit basic shapes
+ADD only 1-2 essential details that help recognition
+SUGGEST 1-2 main colors maximum
+ENSURE the result is actually drawable in 16x16 pixels
 </optimization_chain_of_thoughts>
-<enhancement_guidelines>
-ALWAYS ADD THESE DETAILS:
-
-SPECIFIC COLORS: Primary and accent colors with hex suggestions
-KEY FEATURES: Important visual elements that define the subject
-STYLE GUIDANCE: Pixel art appropriate styling (outlines, shading)
-POSITIONING: Where to place the subject on the 16x16 canvas
-SIZE GUIDANCE: How much of the canvas the subject should occupy
-</enhancement_guidelines>
+<simplification_guidelines>
+FOR 16x16 PIXEL ART, ONLY ADD:
+ONE main color (plus black for outline)
+ONE key identifying feature if space allows
+Basic positioning (centered)
+Simple shape description
+NO complex details, patterns, or multiple features
+</simplification_guidelines>
 <output_format>
 OUTPUT EXACTLY THIS JSON FORMAT:
 {{
-"optimizedPrompt": "detailed enhanced prompt string"
+"optimizedPrompt": "simple, minimal enhanced prompt"
 }}
-</output_format>
-<optimization_examples>
+</output_format><realistic_examples>
 USER PROMPT: "cat"
-OPTIMIZED: {{"optimizedPrompt": "A 16x16 pixel art of an orange tabby cat with black stripes, featuring pointy triangular ears, bright green eyes, pink nose, and white chest. The cat should be centered, facing forward, with black pixel outlines and occupy about 70% of the canvas height. Use transparent background."}}
+OPTIMIZED: {{"optimizedPrompt": "A simple 16x16 pixel art of a cat head in orange with black outline, featuring pointy ears. Centered on transparent background."}}
 USER PROMPT: "tree"
-OPTIMIZED: {{"optimizedPrompt": "A 16x16 pixel art of a large green oak tree with brown trunk, featuring a full leafy crown in various shades of green (#228B22, #32CD32), thick brown trunk (#8B4513), and small branches. Center the tree with roots visible at bottom, occupying 80% of canvas height. Use light blue sky background."}}
+OPTIMIZED: {{"optimizedPrompt": "A basic 16x16 pixel art of a green tree with brown trunk. Simple leafy top, centered on transparent background."}}
 USER PROMPT: "house"
-OPTIMIZED: {{"optimizedPrompt": "A 16x16 pixel art of a cozy cottage with red brick walls (#B22222), dark gray roof (#2F4F4F), yellow glowing windows (#FFFF00), brown wooden door (#8B4513), and green grass at the base. Include a small chimney with smoke. Center the house occupying 60% of canvas, transparent background."}}
-</optimization_examples>
-<color_suggestions>
-USE PIXEL ART APPROPRIATE COLORS:
-
-VIBRANT: High contrast, saturated colors work best
-OUTLINES: Usually black (#000000FF) or dark variants
-HIGHLIGHTS: Lighter versions of base colors
-SHADOWS: Darker versions of base colors
-TRANSPARENCY: Use #XXXXXXFF for opaque, lower values for transparency
-</color_suggestions>
-<what_not_to_do>
-
-DO NOT keep prompts vague or generic
-DO NOT forget to specify colors and positioning
-DO NOT ignore the 16x16 canvas size limitations
-DO NOT add unrealistic detail for pixel art medium
-DO NOT output invalid JSON format
-DO NOT make prompts overly complex or confusing
+OPTIMIZED: {{"optimizedPrompt": "A simple 16x16 pixel art of a small house with red walls and dark roof. Basic square shape with triangle roof, centered."}}
+USER PROMPT: "apple"
+OPTIMIZED: {{"optimizedPrompt": "A 16x16 pixel art of a red apple. Simple circular shape with black outline, centered on transparent background."}}
+USER PROMPT: "car"
+OPTIMIZED: {{"optimizedPrompt": "A basic 16x16 pixel art of a blue car. Simple rectangular shape with black wheels, side view, centered."}}
+</realistic_examples><what_not_to_do>
+DO NOT add multiple colors or complex details
+DO NOT suggest features that won't fit in 16x16
+DO NOT make the prompt longer than necessary
+DO NOT add unrealistic expectations for tiny canvas
+DO NOT ignore the severe space limitations
+DO NOT change the core subject requested
 </what_not_to_do>
 `.trim();
 
+function findEmpty16x16(
+  layers: Layer[],
+  aiAreas: Record<string, { startX: number; startY: number }>
+): { startX: number; startY: number } {
+  const occupied: Set<string> = new Set();
+  const GAP = 2; // 2-pixel gap
+
+  // Mark existing pixels as occupied
+  layers.forEach((layer) => {
+    layer.pixels.forEach((_, key) => {
+      const [x, y] = key.split(',').map(Number);
+      // Add gap around each pixel
+      for (let dy = -GAP; dy <= GAP; dy++) {
+        for (let dx = -GAP; dx <= GAP; dx++) {
+          occupied.add(`${x + dx},${y + dy}`);
+        }
+      }
+    });
+  });
+
+  // Mark AI areas as occupied, including gap
+  Object.values(aiAreas).forEach((area) => {
+    for (let dy = -GAP; dy < 16 + GAP; dy++) {
+      for (let dx = -GAP; dx < 16 + GAP; dx++) {
+        const key = `${area.startX + dx},${area.startY + dy}`;
+        occupied.add(key);
+      }
+    }
+  });
+
+  const step = 16;
+  const maxSearch = 10000;
+  for (let startY = 0; startY < maxSearch; startY += step) {
+    for (let startX = 0; startX < maxSearch; startX += step) {
+      let isEmpty = true;
+      check: for (let dy = 0; dy < 16; dy++) {
+        for (let dx = 0; dx < 16; dx++) {
+          const key = `${startX + dx},${startY + dy}`;
+          if (occupied.has(key)) {
+            isEmpty = false;
+            break check;
+          }
+        }
+      }
+      if (isEmpty) {
+        return { startX, startY };
+      }
+    }
+  }
+  throw new Error('No empty 16x16 area found with sufficient gap');
+}
+
 export const useAIStore = create<AIState>()(
   devtools(
-    (set, get) => {
-      let abortController: AbortController | null = null;
+    (set, get) => ({
+      generations: {},
+      currentPrompt: '',
+      setCurrentPrompt: (prompt) => set({ currentPrompt: prompt }),
+      startGeneration: async () => {
+        const id = Date.now().toString();
+        const prompt = get().currentPrompt;
+        if (!prompt) {
+          return;
+        }
 
-      return {
-        prompt: '',
-        isGenerating: false,
-        error: null,
-        progress: 0,
-        thoughts: [],
-        setPrompt: (prompt) => set({ prompt }),
-        stopGeneration: () => {
-          if (abortController) {
-            abortController.abort();
-            set({
-              isGenerating: false,
-              progress: 0,
-              error: 'Generation stopped by user',
-            });
-          }
-        },
-        generateImage: async () => {
-          const { prompt } = get();
-          if (!prompt) {
-            set({ error: 'Please enter a prompt' });
-            return;
-          }
-
-          set({ isGenerating: true, error: null, progress: 0, thoughts: [] });
-          abortController = new AbortController();
-          const signal = abortController.signal;
-
-          try {
-            // Initialize LLM based on provider
-            const llm =
-              process.env.NEXT_PUBLIC_LLM_PROVIDER === 'openai'
-                ? new ChatOpenAI({
-                    model: process.env.NEXT_PUBLIC_LLM_MODEL,
-                    apiKey: process.env.NEXT_PUBLIC_LLM_API_KEY,
-                    configuration: {
-                      baseURL: process.env.NEXT_PUBLIC_LLM_BASE_URL,
-                    },
-                    temperature: 0.05,
-                    format: 'json',
-                  })
-                : new ChatOllama({
-                    model: process.env.NEXT_PUBLIC_LLM_MODEL,
-                    baseUrl: process.env.NEXT_PUBLIC_LLM_BASE_URL,
-                    apiKey: process.env.NEXT_PUBLIC_LLM_API_KEY,
-                    temperature: 0.05,
-                    format: 'json',
-                  });
-
-            // Prompt optimizer chain
-            const optimizerPromptTemplate = ChatPromptTemplate.fromMessages([
-              ['system', OPTIMIZER_SYSTEM_PROMPT],
-              ['human', '{input}'],
-            ]);
-
-            const optimizerChain = RunnableSequence.from([
-              optimizerPromptTemplate,
-              llm,
-              (response: AIMessage) => {
-                try {
-                  const content =
-                    typeof response.content === 'string'
-                      ? JSON.parse(jsonrepair(response.content))
-                      : response.content;
-                  return z
-                    .object({ optimizedPrompt: z.string() })
-                    .parse(content).optimizedPrompt;
-                } catch (e) {
-                  console.error('Optimizer JSON parsing error:', e);
-                  return prompt; // Fallback to original prompt
-                }
+        const { layers, aiAreas } = useLayerStore.getState();
+        let area;
+        try {
+          area = findEmpty16x16(layers, aiAreas);
+        } catch (e) {
+          set({
+            generations: {
+              ...get().generations,
+              [id]: {
+                id,
+                prompt,
+                isGenerating: false,
+                error: (e as Error).message,
+                progress: 0,
+                thoughts: [],
+                abortController: null,
+                area: null,
               },
-            ]);
+            },
+          });
+          return;
+        }
 
-            // Optimize the prompt
-            const optimizedPrompt = await optimizerChain.invoke(
-              { input: prompt },
-              { signal }
-            );
-            set({ progress: 5 });
+        const abortController = new AbortController();
 
-            // Drawing agent chain
-            const drawPromptTemplate = ChatPromptTemplate.fromMessages([
-              ['system', DRAW_SYSTEM_PROMPT],
-              ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
-              new MessagesPlaceholder('agent_scratchpad'),
-            ]);
+        set({
+          generations: {
+            ...get().generations,
+            [id]: {
+              id,
+              prompt,
+              isGenerating: true,
+              error: null,
+              progress: 0,
+              thoughts: [],
+              abortController,
+              area,
+            },
+          },
+        });
 
-            // Critic agent chain
-            const criticPromptTemplate = ChatPromptTemplate.fromMessages([
-              ['system', CRITIC_SYSTEM_PROMPT],
-              ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
-            ]);
+        useLayerStore.getState().addAIArea(id, area);
 
-            const parsePixelResponse = (response: AIMessage) => {
+        const signal = abortController.signal;
+
+        try {
+          // Initialize LLM based on provider
+          const llm =
+            process.env.NEXT_PUBLIC_LLM_PROVIDER === 'openai'
+              ? new ChatOpenAI({
+                  model: process.env.NEXT_PUBLIC_LLM_MODEL,
+                  apiKey: process.env.NEXT_PUBLIC_LLM_API_KEY,
+                  configuration: {
+                    baseURL: process.env.NEXT_PUBLIC_LLM_BASE_URL,
+                  },
+                  temperature: 0.05,
+                  format: 'json',
+                })
+              : new ChatOllama({
+                  model: process.env.NEXT_PUBLIC_LLM_MODEL,
+                  baseUrl: process.env.NEXT_PUBLIC_LLM_BASE_URL,
+                  apiKey: process.env.NEXT_PUBLIC_LLM_API_KEY,
+                  temperature: 0.05,
+                  format: 'json',
+                });
+
+          // Prompt optimizer chain
+          const optimizerPromptTemplate = ChatPromptTemplate.fromMessages([
+            ['system', OPTIMIZER_SYSTEM_PROMPT],
+            ['human', '{input}'],
+          ]);
+
+          const optimizerChain = RunnableSequence.from([
+            optimizerPromptTemplate,
+            llm,
+            (response: AIMessage) => {
               try {
                 const content =
                   typeof response.content === 'string'
-                    ? JSON.parse(
-                        jsonrepair(
-                          response.content
-                            .replace('```json', '')
-                            .replace('```', '')
-                        )
-                      )
+                    ? JSON.parse(jsonrepair(response.content))
                     : response.content;
-                const validated = pixelSchema.safeParse(
-                  content.pixels || content
-                );
-                if (validated.success) {
-                  return {
-                    pixels: validated.data,
-                    thoughts: content.thoughts || '',
-                    error: null,
-                  };
+                return z.object({ optimizedPrompt: z.string() }).parse(content)
+                  .optimizedPrompt;
+              } catch (e) {
+                console.error('Optimizer JSON parsing error:', e);
+                return prompt; // Fallback to original prompt
+              }
+            },
+          ]);
+
+          // Optimize the prompt
+          const optimizedPrompt = await optimizerChain.invoke(
+            { input: prompt },
+            { signal }
+          );
+          set((state) => ({
+            generations: {
+              ...state.generations,
+              [id]: {
+                ...state.generations[id],
+                progress: 5,
+              },
+            },
+          }));
+
+          // Drawing agent chain
+          const drawPromptTemplate = ChatPromptTemplate.fromMessages([
+            ['system', DRAW_SYSTEM_PROMPT],
+            ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
+            new MessagesPlaceholder('agent_scratchpad'),
+          ]);
+
+          // Critic agent chain
+          const criticPromptTemplate = ChatPromptTemplate.fromMessages([
+            ['system', CRITIC_SYSTEM_PROMPT],
+            ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
+          ]);
+
+          const parsePixelResponse = (response: AIMessage) => {
+            try {
+              const content =
+                typeof response.content === 'string'
+                  ? JSON.parse(
+                      jsonrepair(
+                        response.content
+                          .replace('```json', '')
+                          .replace('```', '')
+                      )
+                    )
+                  : response.content;
+              const validated = pixelSchema.safeParse(
+                content.pixels || content
+              );
+              if (validated.success) {
+                return {
+                  pixels: validated.data,
+                  thoughts: content.thoughts || '',
+                  error: null,
+                };
+              }
+              throw new Error('Invalid pixel schema');
+            } catch (e) {
+              console.error('Pixel JSON parsing error:', e);
+              return {
+                pixels: null,
+                thoughts: '',
+                error: 'Failed to parse pixel data',
+              };
+            }
+          };
+
+          const parseCriticResponse = (response: AIMessage) => {
+            try {
+              const content =
+                typeof response.content === 'string'
+                  ? JSON.parse(
+                      jsonrepair(
+                        response.content
+                          .replace('```json', '')
+                          .replace('```', '')
+                      )
+                    )
+                  : response.content;
+              return z
+                .object({
+                  isComplete: z.boolean(),
+                  feedback: z.string(),
+                })
+                .parse(content);
+            } catch (e) {
+              console.error('Critic JSON parsing error:', e);
+              return {
+                isComplete: false,
+                feedback: 'Error evaluating image',
+              };
+            }
+          };
+
+          const executeDrawPixel = async (
+            pixels: { x: number; y: number; color: string }[]
+          ) => {
+            const { setLayerPixels } = useLayerStore.getState();
+            const activeLayerId = useLayerStore.getState().activeLayerId;
+            const pixelData = pixels
+              .map(({ x, y, color }) => ({
+                x: area.startX + x,
+                y: area.startY + y,
+                color: hexToInt(color),
+              }))
+              .filter((p) => p.color !== 0);
+
+            if (pixelData.length > 0) {
+              setLayerPixels(activeLayerId, pixelData, true);
+              set((state) => ({
+                generations: {
+                  ...state.generations,
+                  [id]: {
+                    ...state.generations[id],
+                    progress: Math.min(state.generations[id].progress + 10, 90),
+                  },
+                },
+              }));
+            }
+
+            return pixelData;
+          };
+
+          const agent = RunnableSequence.from([
+            drawPromptTemplate,
+            llm,
+            async (response: AIMessage, { signal }) => {
+              let messages = [
+                ['system', DRAW_SYSTEM_PROMPT],
+                new HumanMessage({
+                  content: `Prompt: ${optimizedPrompt}\nCurrent pixels: []`,
+                }),
+              ];
+              let iteration = 0;
+              const maxIterations = 50;
+              let totalPixels = 0;
+              let allPixels: { x: number; y: number; color: string }[] = [];
+
+              while (iteration < maxIterations) {
+                signal.throwIfAborted();
+
+                const { pixels, thoughts, error } =
+                  parsePixelResponse(response);
+                if (error) {
+                  set((state) => ({
+                    generations: {
+                      ...state.generations,
+                      [id]: {
+                        ...state.generations[id],
+                        error,
+                      },
+                    },
+                  }));
+                  break;
                 }
-                throw new Error('Invalid pixel schema');
-              } catch (e) {
-                console.error('Pixel JSON parsing error:', e);
-                return {
-                  pixels: null,
-                  thoughts: '',
-                  error: 'Failed to parse pixel data',
-                };
-              }
-            };
 
-            const parseCriticResponse = (response: AIMessage) => {
-              try {
-                const content =
-                  typeof response.content === 'string'
-                    ? JSON.parse(
-                        jsonrepair(
-                          response.content
-                            .replace('```json', '')
-                            .replace('```', '')
-                        )
-                      )
-                    : response.content;
-                return z
-                  .object({
-                    isComplete: z.boolean(),
-                    feedback: z.string(),
-                  })
-                  .parse(content);
-              } catch (e) {
-                console.error('Critic JSON parsing error:', e);
-                return {
-                  isComplete: false,
-                  feedback: 'Error evaluating image',
-                };
-              }
-            };
+                if (thoughts) {
+                  set((state) => ({
+                    generations: {
+                      ...state.generations,
+                      [id]: {
+                        ...state.generations[id],
+                        thoughts: [
+                          ...state.generations[id].thoughts,
+                          `Drawing Agent (Iteration ${iteration + 1}): ${thoughts}`,
+                        ],
+                      },
+                    },
+                  }));
+                }
 
-            const executeDrawPixel = async (
-              pixels: { x: number; y: number; color: string }[]
-            ) => {
-              const { setLayerPixels } = useLayerStore.getState();
-              const activeLayerId = useLayerStore.getState().activeLayerId;
-              const pixelData = pixels
-                .map(({ x, y, color }) => ({ x, y, color: hexToInt(color) }))
-                .filter((p) => p.color !== 0);
+                if (pixels && pixels.length > 0) {
+                  const drawnPixels = await executeDrawPixel(pixels);
+                  totalPixels += drawnPixels.length;
+                  allPixels = [...allPixels, ...pixels];
 
-              if (pixelData.length > 0) {
-                setLayerPixels(activeLayerId, pixelData);
-                set((state) => ({
-                  progress: Math.min(state.progress + 10, 90),
-                }));
-              }
+                  // Evaluate with critic
+                  const criticResponse = await criticPromptTemplate
+                    .pipe(llm)
+                    .invoke(
+                      {
+                        input: optimizedPrompt,
+                        pixels: JSON.stringify(allPixels),
+                      },
+                      { signal }
+                    );
 
-              return pixelData;
-            };
+                  const { isComplete, feedback } =
+                    parseCriticResponse(criticResponse);
+                  set((state) => ({
+                    generations: {
+                      ...state.generations,
+                      [id]: {
+                        ...state.generations[id],
+                        thoughts: [
+                          ...state.generations[id].thoughts,
+                          `Critic Feedback (Iteration ${iteration + 1}): ${feedback}`,
+                        ],
+                      },
+                    },
+                  }));
+                  console.log('Critic feedback:', feedback);
 
-            const agent = RunnableSequence.from([
-              drawPromptTemplate,
-              llm,
-              async (response: AIMessage, { signal }) => {
-                let messages = [
-                  ['system', DRAW_SYSTEM_PROMPT],
-                  new HumanMessage({
-                    content: `Prompt: ${optimizedPrompt}\nCurrent pixels: []`,
-                  }),
-                ];
-                let iteration = 0;
-                const maxIterations = 50;
-                let totalPixels = 0;
-                let allPixels: { x: number; y: number; color: string }[] = [];
-
-                while (iteration < maxIterations) {
-                  signal.throwIfAborted();
-
-                  const { pixels, thoughts, error } =
-                    parsePixelResponse(response);
-                  if (error) {
-                    set({ error });
+                  if (isComplete) {
                     break;
                   }
 
-                  if (thoughts) {
-                    set((state) => ({
-                      thoughts: [
-                        ...state.thoughts,
-                        `Drawing Agent (Iteration ${iteration + 1}): ${thoughts}`,
-                      ],
-                    }));
-                  }
-
-                  if (pixels && pixels.length > 0) {
-                    const drawnPixels = await executeDrawPixel(pixels);
-                    totalPixels += drawnPixels.length;
-                    allPixels = [...allPixels, ...pixels];
-
-                    // Evaluate with critic
-                    const criticResponse = await criticPromptTemplate
-                      .pipe(llm)
-                      .invoke(
-                        {
-                          input: optimizedPrompt,
-                          pixels: JSON.stringify(allPixels),
-                        },
-                        { signal }
-                      );
-
-                    const { isComplete, feedback } =
-                      parseCriticResponse(criticResponse);
-                    set((state) => ({
-                      thoughts: [
-                        ...state.thoughts,
-                        `Critic Feedback (Iteration ${iteration + 1}): ${feedback}`,
-                      ],
-                    }));
-                    console.log('Critic feedback:', feedback);
-
-                    if (isComplete) {
-                      break;
-                    }
-
-                    messages = [
-                      ['system', DRAW_SYSTEM_PROMPT],
-                      new HumanMessage({
-                        content: `Current pixels: ${JSON.stringify(allPixels)}\nCritic feedback: "${feedback}"\nContinue drawing, respond only with valid JSON array of pixels.`,
-                      }),
-                    ];
-                  } else {
-                    break; // No pixels drawn, stop iteration
-                  }
-
-                  // Invoke next iteration
-                  response = await llm.invoke(messages, { signal });
-                  iteration++;
-                  // await new Promise((resolve) => setTimeout(resolve, 100)); // Throttle
+                  messages = [
+                    ['system', DRAW_SYSTEM_PROMPT],
+                    new HumanMessage({
+                      content: `Current pixels: ${JSON.stringify(allPixels)}\nCritic feedback: "${feedback}"\nContinue drawing, respond only with valid JSON array of pixels.`,
+                    }),
+                  ];
+                } else {
+                  break; // No pixels drawn, stop iteration
                 }
 
-                if (totalPixels === 0) {
-                  set({ error: 'No pixels were drawn by the AI.' });
-                }
+                // Invoke next iteration
+                response = await llm.invoke(messages, { signal });
+                iteration++;
+                // await new Promise((resolve) => setTimeout(resolve, 100)); // Throttle
+              }
 
-                return response;
+              if (totalPixels === 0) {
+                set((state) => ({
+                  generations: {
+                    ...state.generations,
+                    [id]: {
+                      ...state.generations[id],
+                      error: 'No pixels were drawn by the AI.',
+                    },
+                  },
+                }));
+              }
+
+              return response;
+            },
+          ]);
+
+          // Run the agent
+          await agent.invoke(
+            { input: optimizedPrompt, agent_scratchpad: [], pixels: '[]' },
+            { signal }
+          );
+        } catch (error) {
+          if (signal.aborted) {
+            set((state) => ({
+              generations: {
+                ...state.generations,
+                [id]: {
+                  ...state.generations[id],
+                  error: 'Generation stopped by user',
+                },
               },
-            ]);
-
-            // Run the agent
-            await agent.invoke(
-              { input: optimizedPrompt, agent_scratchpad: [], pixels: '[]' },
-              { signal }
-            );
-          } catch (error) {
-            if (signal.aborted) {
-              set({ error: 'Generation stopped by user' });
-            } else {
-              set({ error: (error as Error).message });
-            }
-          } finally {
-            set({ isGenerating: false, progress: 100 });
-            abortController = null;
+            }));
+          } else {
+            set((state) => ({
+              generations: {
+                ...state.generations,
+                [id]: {
+                  ...state.generations[id],
+                  error: (error as Error).message,
+                },
+              },
+            }));
           }
-        },
-      };
-    },
+        } finally {
+          set((state) => ({
+            generations: {
+              ...state.generations,
+              [id]: {
+                ...state.generations[id],
+                isGenerating: false,
+                abortController: null,
+                progress: 100,
+              },
+            },
+          }));
+          useLayerStore.getState().removeAIArea(id);
+        }
+      },
+      stopGeneration: (id) => {
+        const gen = get().generations[id];
+        if (gen && gen.abortController) {
+          gen.abortController.abort();
+          set((state) => ({
+            generations: {
+              ...state.generations,
+              [id]: {
+                ...state.generations[id],
+                isGenerating: false,
+                error: 'Generation stopped by user',
+              },
+            },
+          }));
+          useLayerStore.getState().removeAIArea(id);
+        }
+      },
+    }),
     { name: 'AIStore' }
   )
 );
