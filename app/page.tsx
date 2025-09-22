@@ -1,4 +1,4 @@
-import { LayerPanel } from '@/features/layers/ui/LayerPanel';
+import { AnimationPanel } from '@/features/animation/ui/AnimationPanel';
 import { RightPanel } from '@/features/layers/ui/RightPanels';
 import { PixelBoard } from '@/features/pixel-board/ui/PixelBoard';
 import { Toolbar } from '@/features/toolbar/ui/Toolbar';
@@ -23,6 +23,10 @@ export default function Home() {
         <aside className="flex w-80 max-w-80 min-w-80 flex-col gap-4">
           <RightPanel />
         </aside>
+      </div>
+
+      <div>
+        <AnimationPanel />
       </div>
     </div>
   );

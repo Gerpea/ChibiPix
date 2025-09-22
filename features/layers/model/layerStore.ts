@@ -7,6 +7,7 @@ import {
 } from '@/features/serialization/utils';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 
 export interface Layer {
   id: string;
@@ -33,6 +34,7 @@ interface LayerStoreState {
   setLayerLock: (id: string, locked: boolean) => void;
   addAIArea: (id: string, area: { startX: number; startY: number }) => void;
   removeAIArea: (id: string) => void;
+  setLayers: (layers: Layer[], activeLayerId?: string) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
   exportData: (
@@ -75,6 +77,9 @@ export const useLayerStore = create<LayerStoreState>()(
           set((state) => {
             const layers = [...state.layers, newLayer];
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, newLayer.id);
             return { layers, activeLayerId: newLayer.id };
           });
         },
@@ -96,10 +101,16 @@ export const useLayerStore = create<LayerStoreState>()(
                 pixels: new Map(),
               };
               pushHistory();
+              useAnimationStore
+                .getState()
+                .updateCurrentFrameLayers([defaultLayer], defaultLayer.id);
               return { layers: [defaultLayer], activeLayerId: defaultLayer.id };
             }
 
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, activeLayerId);
             return { layers, activeLayerId };
           });
         },
@@ -113,7 +124,7 @@ export const useLayerStore = create<LayerStoreState>()(
         ) =>
           set((state) => {
             const layer = state.layers.find((l) => l.id === layerId);
-            if ((!layer || layer.locked) && !force) return state; // Prevent drawing on locked layers
+            if ((!layer || layer.locked) && !force) return state;
 
             let filteredPixels = pixels;
             if (!force) {
@@ -138,12 +149,14 @@ export const useLayerStore = create<LayerStoreState>()(
               if (color === 0) newPixels.delete(key);
               else newPixels.set(key, color);
             });
+            const newLayers = state.layers.map((l) =>
+              l.id === layerId ? { ...l, pixels: newPixels } : l
+            );
             pushHistory();
-            return {
-              layers: state.layers.map((l) =>
-                l.id === layerId ? { ...l, pixels: newPixels } : l
-              ),
-            };
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(newLayers, state.activeLayerId);
+            return { layers: newLayers };
           }),
 
         toggleVisibility: (id) => {
@@ -152,6 +165,9 @@ export const useLayerStore = create<LayerStoreState>()(
               l.id === id ? { ...l, visible: !l.visible } : l
             );
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, state.activeLayerId);
             return { layers };
           });
         },
@@ -164,6 +180,9 @@ export const useLayerStore = create<LayerStoreState>()(
               l.id === id ? { ...l, locked: !l.locked } : l
             );
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, state.activeLayerId);
             return { layers };
           });
         },
@@ -174,6 +193,9 @@ export const useLayerStore = create<LayerStoreState>()(
               l.id === id ? { ...l, locked } : l
             );
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, state.activeLayerId);
             return { layers };
           });
         },
@@ -186,6 +208,18 @@ export const useLayerStore = create<LayerStoreState>()(
           const aiAreas = { ...get().aiAreas };
           delete aiAreas[id];
           set({ aiAreas });
+        },
+
+        setLayers: (layers, activeLayerId) => {
+          set((state) => {
+            const newActiveLayerId =
+              activeLayerId || layers[0]?.id || state.activeLayerId;
+            pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, newActiveLayerId);
+            return { layers, activeLayerId: newActiveLayerId };
+          });
         },
 
         moveLayer: (fromIndex, toIndex) => {
@@ -203,6 +237,9 @@ export const useLayerStore = create<LayerStoreState>()(
             newLayers.splice(toIndex, 0, moved);
 
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(newLayers, state.activeLayerId);
             return { layers: newLayers };
           });
         },
@@ -213,6 +250,9 @@ export const useLayerStore = create<LayerStoreState>()(
               l.id === id ? { ...l, name } : l
             );
             pushHistory();
+            useAnimationStore
+              .getState()
+              .updateCurrentFrameLayers(layers, state.activeLayerId);
             return { layers };
           });
         },
@@ -236,6 +276,9 @@ export const useLayerStore = create<LayerStoreState>()(
                 layers.length > 0 ? layers[0].id : state.activeLayerId;
               console.log('Imported layers:', layers);
               pushHistory();
+              useAnimationStore
+                .getState()
+                .updateCurrentFrameLayers(layers, activeLayerId);
               return { layers, activeLayerId };
             });
           } catch (error) {

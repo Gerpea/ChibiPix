@@ -13,9 +13,8 @@
   - [x] Create random character generator
 
 - 🎞️ **Animation Tools** – Create walk cycles, idle animations, and loops.
-  - [ ] Implement frame-by-frame timeline editor
-  - [ ] Add preview/playback for animations
-  - [ ] Support exporting animated frames
+  - [x] Implement frame-by-frame timeline editor
+  - [x] Add preview/playback for animations
 
 - 💾 **Export Options** – Export your spritesheets, GIFs, or PNG frames.
   - [ ] Export as PNG frames
