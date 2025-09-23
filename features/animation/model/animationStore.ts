@@ -8,22 +8,23 @@ export interface Frame {
   name: string;
   layers: Layer[];
   activeLayerId: string;
-  duration: number; // in animation frames
+  duration: number;
 }
 
 interface AnimationState {
   frames: Frame[];
   currentFrameIndex: number;
-  fps: number; // frames per second
+  fps: number;
   isPlaying: boolean;
-  timer: NodeJS.Timeout | null;
-  currentSubFrame: number;
+  timer: number | null;
+  currentTime: number;
   addFrame: (duplicateCurrent?: boolean) => void;
   removeFrame: (index: number) => void;
   moveFrame: (fromIndex: number, toIndex: number) => void;
   setCurrentFrame: (index: number) => void;
   setFps: (fps: number) => void;
   setFrameDuration: (index: number, duration: number) => void;
+  setCurrentTime: (time: number) => void;
   play: () => void;
   pause: () => void;
   stop: () => void;
@@ -63,16 +64,16 @@ export const useAnimationStore = create<AnimationState>()(
         name: 'Frame 1',
         layers: [defaultLayer],
         activeLayerId: defaultLayer.id,
-        duration: 1,
+        duration: 100,
       };
 
       return {
         frames: [initialFrame],
         currentFrameIndex: 0,
-        fps: 10, // default 10 fps
+        fps: 12,
         isPlaying: false,
         timer: null,
-        currentSubFrame: 0,
+        currentTime: 0,
 
         addFrame: (duplicateCurrent = true) => {
           const currentLayers = useLayerStore.getState().layers;
@@ -99,7 +100,7 @@ export const useAnimationStore = create<AnimationState>()(
             name: `Frame ${get().frames.length + 1}`,
             layers: newLayers,
             activeLayerId: newActiveLayerId,
-            duration: 1,
+            duration: get().frames[get().currentFrameIndex].duration,
           };
 
           set((state) => {
@@ -112,7 +113,7 @@ export const useAnimationStore = create<AnimationState>()(
         },
 
         removeFrame: (index) => {
-          if (get().frames.length <= 1) return; // Keep at least one frame
+          if (get().frames.length <= 1) return;
           set((state) => {
             const frames = state.frames.filter((_, i) => i !== index);
             let newIndex = state.currentFrameIndex;
@@ -184,38 +185,17 @@ export const useAnimationStore = create<AnimationState>()(
               useLayerStore.getState().setActiveLayer(newActiveLayerId);
             }
 
-            return { currentFrameIndex: index, currentSubFrame: 0 };
+            // const currentTime = state.frames.slice(0, index).reduce((acc, f) => acc + f.duration, 0);
+            return { currentFrameIndex: index };
           });
         },
 
         setFps: (fps) => {
           set((state) => {
-            if (fps < 1) return state; // Prevent invalid FPS
+            if (fps < 1) return state;
             if (state.isPlaying && state.timer) {
-              clearInterval(state.timer);
-              const interval = 1000 / fps;
-              const timer = setInterval(() => {
-                set((innerState) => {
-                  let newSubFrame = innerState.currentSubFrame + 1;
-                  let newFrameIndex = innerState.currentFrameIndex;
-                  if (
-                    newSubFrame >= innerState.frames[newFrameIndex].duration
-                  ) {
-                    newSubFrame = 0;
-                    newFrameIndex =
-                      (newFrameIndex + 1) % innerState.frames.length;
-                  }
-                  return {
-                    currentSubFrame: newSubFrame,
-                    currentFrameIndex: newFrameIndex,
-                  };
-                });
-                const state = get();
-                if (state.currentSubFrame === 0) {
-                  state.setCurrentFrame(state.currentFrameIndex);
-                }
-              }, interval);
-              return { fps, timer };
+              cancelAnimationFrame(state.timer);
+              state.play();
             }
             return { fps };
           });
@@ -231,30 +211,82 @@ export const useAnimationStore = create<AnimationState>()(
           });
         },
 
+        setCurrentTime: (time) => {
+          set((state) => {
+            if (state.frames.length === 0) return state;
+            const totalDuration = state.frames.reduce(
+              (acc, f) => acc + f.duration,
+              0
+            );
+            const currentTime = Math.max(0, Math.min(totalDuration, time));
+            let currentFrameIndex = 0;
+            let accumulated = 0;
+
+            for (let i = 0; i < state.frames.length; i++) {
+              accumulated += state.frames[i].duration;
+              if (currentTime < accumulated) {
+                currentFrameIndex = i;
+                break;
+              }
+            }
+
+            if (currentFrameIndex !== state.currentFrameIndex) {
+              state.setCurrentFrame(currentFrameIndex);
+            }
+
+            return { currentTime, currentFrameIndex };
+          });
+        },
+
         play: () => {
           if (get().frames.length === 0) return;
           set((state) => {
             if (state.isPlaying) return state;
-            const interval = 1000 / state.fps;
-            const timer = setInterval(() => {
+            let lastTime: number | null = null;
+
+            const animate = (currentTimestamp: number) => {
               set((innerState) => {
-                let newSubFrame = innerState.currentSubFrame + 1;
-                let newFrameIndex = innerState.currentFrameIndex;
-                if (newSubFrame >= innerState.frames[newFrameIndex].duration) {
-                  newSubFrame = 0;
-                  newFrameIndex =
-                    (newFrameIndex + 1) % innerState.frames.length;
+                if (!innerState.isPlaying) return innerState;
+                if (!lastTime) lastTime = currentTimestamp;
+                const deltaTime = currentTimestamp - lastTime;
+                lastTime = currentTimestamp;
+
+                let currentTime = innerState.currentTime + deltaTime;
+                let currentFrameIndex = innerState.currentFrameIndex;
+                let accumulated = 0;
+                const totalDuration = innerState.frames.reduce(
+                  (acc, f) => acc + f.duration,
+                  0
+                );
+
+                if (totalDuration === 0) {
+                  return { isPlaying: false, timer: null };
                 }
-                return {
-                  currentSubFrame: newSubFrame,
-                  currentFrameIndex: newFrameIndex,
-                };
+
+                if (currentTime >= totalDuration) {
+                  currentTime = currentTime % totalDuration; // Loop
+                  currentFrameIndex = 0;
+                  accumulated = 0;
+                }
+
+                for (let i = 0; i < innerState.frames.length; i++) {
+                  accumulated += innerState.frames[i].duration;
+                  if (currentTime <= accumulated) {
+                    currentFrameIndex = i;
+                    break;
+                  }
+                }
+
+                if (currentFrameIndex !== innerState.currentFrameIndex) {
+                  innerState.setCurrentFrame(currentFrameIndex);
+                }
+
+                const timer = requestAnimationFrame(animate);
+                return { currentFrameIndex, currentTime, timer };
               });
-              const state = get();
-              if (state.currentSubFrame === 0) {
-                state.setCurrentFrame(state.currentFrameIndex);
-              }
-            }, interval);
+            };
+
+            const timer = requestAnimationFrame(animate);
             return { isPlaying: true, timer };
           });
         },
@@ -262,14 +294,14 @@ export const useAnimationStore = create<AnimationState>()(
         pause: () => {
           set((state) => {
             if (!state.isPlaying) return state;
-            if (state.timer) clearInterval(state.timer);
+            if (state.timer) cancelAnimationFrame(state.timer);
             return { isPlaying: false, timer: null };
           });
         },
 
         stop: () => {
           set((state) => {
-            if (state.timer) clearInterval(state.timer);
+            if (state.timer) cancelAnimationFrame(state.timer);
             if (state.frames.length > 0) {
               state.setCurrentFrame(0);
             }
@@ -277,7 +309,7 @@ export const useAnimationStore = create<AnimationState>()(
               isPlaying: false,
               timer: null,
               currentFrameIndex: 0,
-              currentSubFrame: 0,
+              currentTime: 0,
             };
           });
         },

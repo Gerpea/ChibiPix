@@ -16,17 +16,16 @@ export default function Home() {
           <Toolbar />
         </aside>
 
-        <main className="flex h-full w-full items-center justify-center overflow-hidden rounded-md bg-white">
-          <PixelBoard />
-        </main>
+        <div className="flex h-full w-full flex-col gap-2">
+          <main className="flex h-full w-full items-center justify-center overflow-hidden rounded-md bg-white">
+            <PixelBoard />
+          </main>
+          <AnimationPanel />
+        </div>
 
         <aside className="flex w-80 max-w-80 min-w-80 flex-col gap-4">
           <RightPanel />
         </aside>
-      </div>
-
-      <div>
-        <AnimationPanel />
       </div>
     </div>
   );
