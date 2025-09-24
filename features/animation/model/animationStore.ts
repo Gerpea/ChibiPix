@@ -1,14 +1,22 @@
+// features/animation/model/animationStore.ts
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useHistoryStore } from '@/features/history/model/historyStore';
 import { useLayerStore, type Layer } from '@/features/layers/model/layerStore';
+import {
+  exportAnimation,
+  ExportProgress,
+  importAnimation,
+  ImportProgress,
+} from '@/features/serialization/utils';
 
 export interface Frame {
   id: string;
   name: string;
   layers: Layer[];
   activeLayerId: string;
-  duration: number; // duration units: milliseconds in this implementation
+  duration: number;
 }
 
 interface AnimationState {
@@ -16,8 +24,8 @@ interface AnimationState {
   currentFrameIndex: number;
   fps: number;
   isPlaying: boolean;
-  timer: number | null; // requestAnimationFrame id
-  currentTime: number; // ms from loop start
+  timer: number | null;
+  currentTime: number;
   addFrame: (duplicateCurrent?: boolean) => void;
   removeFrame: (index: number) => void;
   moveFrame: (fromIndex: number, toIndex: number) => void;
@@ -29,12 +37,17 @@ interface AnimationState {
   pause: () => void;
   stop: () => void;
   updateCurrentFrameLayers: (layers: Layer[], activeLayerId: string) => void;
+  // New functions for import/export
+  exportAnimationData: (
+    onProgress: (progress: ExportProgress) => void
+  ) => Promise<string>;
+  importAnimationData: (
+    data: string,
+    onProgress: (progress: ImportProgress) => void
+  ) => Promise<void>;
 }
 
-/**
- * Deep clone layers **and** generate *new* IDs (used when applying a frame to the live layer store
- * so the live layer objects are independent of stored frame objects).
- */
+// ... deepCloneLayers and cloneLayersPreserveIds functions remain unchanged ...
 function deepCloneLayers(layers: Layer[]): {
   layers: Layer[];
   idMap: Map<string, string>;
@@ -47,17 +60,12 @@ function deepCloneLayers(layers: Layer[]): {
     return {
       ...layer,
       id: newId,
-      // clone pixels Map
       pixels: new Map(layer.pixels),
     };
   });
   return { layers: clonedLayers, idMap };
 }
 
-/**
- * Clone layers but *preserve* their ids. Useful when saving current live layer-store into a frame
- * so activeLayerId keeps pointing to the correct id.
- */
 function cloneLayersPreserveIds(layers: Layer[]): Layer[] {
   return layers.map((layer) => ({
     ...layer,
@@ -69,6 +77,7 @@ function cloneLayersPreserveIds(layers: Layer[]): Layer[] {
 export const useAnimationStore = create<AnimationState>()(
   devtools(
     (set, get) => {
+      // ... initialFrame, defaultLayer, and applyFrameToLayerStore setup remain unchanged ...
       const defaultLayer: Layer = {
         id: Date.now().toString(),
         name: 'Layer 1',
@@ -82,14 +91,9 @@ export const useAnimationStore = create<AnimationState>()(
         name: 'Frame 1',
         layers: [defaultLayer],
         activeLayerId: defaultLayer.id,
-        duration: 100, // milliseconds per frame by default
+        duration: 100,
       };
 
-      /**
-       * Apply a stored frame into the live layer store.
-       * This uses deepCloneLayers so the live layer objects are independent of the frame data.
-       * Returns the new activeLayerId applied.
-       */
       function applyFrameToLayerStore(frame: Frame): string {
         const { layers: clonedLayers, idMap } = deepCloneLayers(frame.layers);
         const newActiveLayerId =
@@ -97,13 +101,11 @@ export const useAnimationStore = create<AnimationState>()(
           clonedLayers[0]?.id ||
           frame.activeLayerId;
 
-        // set layers and active layer directly
         useLayerStore.setState({
           layers: clonedLayers,
           activeLayerId: newActiveLayerId,
         });
 
-        // if layer store provides setter helpers for active layer, ensure it's consistent:
         const ls = useLayerStore.getState();
         if (
           ls.setActiveLayer &&
@@ -124,6 +126,7 @@ export const useAnimationStore = create<AnimationState>()(
         timer: null,
         currentTime: 0,
 
+        // ... All other animation functions (addFrame, removeFrame, etc.) remain unchanged ...
         addFrame: (duplicateCurrent = false) => {
           const currentLayers = useLayerStore.getState().layers;
           const currentActiveLayerId = useLayerStore.getState().activeLayerId;
@@ -155,9 +158,7 @@ export const useAnimationStore = create<AnimationState>()(
           set((state) => {
             const frames = [...state.frames, newFrame];
             const newIndex = frames.length - 1;
-            // set current frame AFTER pushing to history
             useHistoryStore.getState().push();
-            // apply the new frame to the layer store so UI reflects it
             applyFrameToLayerStore(newFrame);
             return { frames, currentFrameIndex: newIndex, currentTime: 0 };
           });
@@ -170,12 +171,10 @@ export const useAnimationStore = create<AnimationState>()(
             let newIndex = state.currentFrameIndex;
             if (newIndex >= frames.length) newIndex = frames.length - 1;
             if (newIndex >= 0) {
-              // before switching, save current live layers into the current frame
               const liveLayers = useLayerStore.getState().layers;
               const liveActive = useLayerStore.getState().activeLayerId;
               const preserved = cloneLayersPreserveIds(liveLayers);
               const framesCopy = [...frames];
-              // ensure we don't write out-of-bounds
               if (state.currentFrameIndex < framesCopy.length) {
                 framesCopy[state.currentFrameIndex] = {
                   ...framesCopy[state.currentFrameIndex],
@@ -183,7 +182,6 @@ export const useAnimationStore = create<AnimationState>()(
                   activeLayerId: liveActive,
                 };
               }
-              // apply the target frame to layer store
               applyFrameToLayerStore(framesCopy[newIndex]);
               useHistoryStore.getState().push();
               return {
@@ -225,20 +223,15 @@ export const useAnimationStore = create<AnimationState>()(
               currentFrameIndex++;
             }
             useHistoryStore.getState().push();
-            // ensure layer store displays currentFrameIndex frame after move:
             applyFrameToLayerStore(frames[currentFrameIndex]);
             return { frames, currentFrameIndex, currentTime: 0 };
           });
         },
 
-        /**
-         * Save current live layers into the current frame, then load the target frame into layerStore.
-         */
         setCurrentFrame: (index) => {
           set((state) => {
             if (index < 0 || index >= state.frames.length) return state;
 
-            // 1) Save live layers into the currently selected frame to avoid losing drawing edits
             const liveLayers = useLayerStore.getState().layers;
             const liveActive = useLayerStore.getState().activeLayerId;
             const preservedLayers = cloneLayersPreserveIds(liveLayers);
@@ -255,7 +248,6 @@ export const useAnimationStore = create<AnimationState>()(
               };
             }
 
-            // 2) Apply target frame to layer store (with id remapping so live store is independent)
             const targetFrame = framesCopy[index];
             applyFrameToLayerStore(targetFrame);
 
@@ -271,14 +263,9 @@ export const useAnimationStore = create<AnimationState>()(
           set((state) => {
             if (fps < 1) return state;
             if (state.isPlaying && state.timer) {
-              // restart play loop with the new FPS setting by stopping and starting
               if (state.timer) cancelAnimationFrame(state.timer);
-              // small synchronous update to set fps; restarting play below
               const newState = { fps };
-              // after state update, restart play
               set(() => newState);
-              // Call play outside of set's returned object to avoid nested set calls.
-              // (We can trigger it synchronously since set above already applied)
               requestAnimationFrame(() => {
                 get().play();
               });
@@ -317,9 +304,7 @@ export const useAnimationStore = create<AnimationState>()(
               }
             }
 
-            // apply the frame if it changed
             if (currentFrameIndex !== state.currentFrameIndex) {
-              // Save current live layers then apply new frame:
               const liveLayers = useLayerStore.getState().layers;
               const liveActive = useLayerStore.getState().activeLayerId;
               const preserved = cloneLayersPreserveIds(liveLayers);
@@ -368,18 +353,15 @@ export const useAnimationStore = create<AnimationState>()(
                 );
 
                 if (totalDuration === 0) {
-                  // nothing to play
                   return { isPlaying: false, timer: null };
                 }
 
-                // loop
                 if (currentTime >= totalDuration) {
                   currentTime = currentTime % totalDuration;
                   currentFrameIndex = 0;
                   accumulated = 0;
                 }
 
-                // determine frame index for currentTime
                 for (let i = 0; i < innerState.frames.length; i++) {
                   accumulated += innerState.frames[i].duration;
                   if (currentTime <= accumulated) {
@@ -388,9 +370,7 @@ export const useAnimationStore = create<AnimationState>()(
                   }
                 }
 
-                // If frame changed, apply the frame to the layer store directly (avoid calling setCurrentFrame)
                 if (currentFrameIndex !== innerState.currentFrameIndex) {
-                  // apply frame directly to live layer store with id remapping
                   const targetFrame = innerState.frames[currentFrameIndex];
                   applyFrameToLayerStore(targetFrame);
                 }
@@ -417,7 +397,6 @@ export const useAnimationStore = create<AnimationState>()(
           set((state) => {
             if (state.timer) cancelAnimationFrame(state.timer);
             if (state.frames.length > 0) {
-              // Save current live layers into current frame before resetting
               const liveLayers = useLayerStore.getState().layers;
               const liveActive = useLayerStore.getState().activeLayerId;
               const preserved = cloneLayersPreserveIds(liveLayers);
@@ -432,7 +411,6 @@ export const useAnimationStore = create<AnimationState>()(
                   activeLayerId: liveActive,
                 };
               }
-              // apply frame 0 to layer store
               applyFrameToLayerStore(framesCopy[0]);
               return {
                 isPlaying: false,
@@ -459,8 +437,6 @@ export const useAnimationStore = create<AnimationState>()(
             )
               return state;
 
-            // When explicitly updating the current frame's stored data, preserve the layer ids
-            // so switching back keeps the same activeLayerId semantics.
             const preserved = cloneLayersPreserveIds(layers);
             const newActive = activeLayerId;
             const newFrames = [...state.frames];
@@ -472,6 +448,55 @@ export const useAnimationStore = create<AnimationState>()(
             useHistoryStore.getState().push();
             return { frames: newFrames };
           });
+        },
+
+        exportAnimationData: async (onProgress) => {
+          try {
+            // Persist any current canvas changes before exporting
+            get().setCurrentFrame(get().currentFrameIndex);
+            const { frames, fps } = get();
+            const data = await exportAnimation({ frames, fps }, onProgress);
+            console.log('Exported .anim data successfully.');
+            return data;
+          } catch (error) {
+            console.error('Export failed:', (error as Error).message);
+            throw error;
+          }
+        },
+
+        importAnimationData: async (data, onProgress) => {
+          try {
+            const { frames, fps } = await importAnimation(data, onProgress);
+            if (!frames || frames.length === 0) {
+              throw new Error('Import failed: No frames found in the file.');
+            }
+
+            set(() => {
+              const firstFrame = frames[0];
+              // The layers from the imported file become the new "live" layers
+              // They must be cloned to ensure the layer store has its own copy
+              const liveLayers = cloneLayersPreserveIds(firstFrame.layers);
+
+              useLayerStore.setState({
+                layers: liveLayers,
+                activeLayerId: firstFrame.activeLayerId,
+              });
+
+              console.log('Imported animation successfully.');
+              useHistoryStore.getState().push();
+              return {
+                frames,
+                fps,
+                currentFrameIndex: 0,
+                currentTime: 0,
+                isPlaying: false,
+                timer: null,
+              };
+            });
+          } catch (error) {
+            console.error('Import failed:', (error as Error).message);
+            throw error;
+          }
         },
       };
     },

@@ -1,81 +1,148 @@
+// features/serialization/animationSerialization.ts
+
+import { Frame } from '@/features/animation/model/animationStore';
 import { Layer } from '@/features/layers/model/layerStore';
 
 const workerURL = '/workers/serialization.js';
 
 export interface ExportProgress {
-  layerId: string;
+  layerId: string; // Composite key: "frameId|layerId"
   progress: number;
 }
 
 export interface ImportProgress {
-  layerId: string;
+  layerId: string; // Composite key: "frameId|layerId"
   progress: number;
 }
 
-interface ImportLayerData {
+// Intermediate structure for parsing the .anim file
+interface ParsedLayerData {
   id: string;
   name: string;
   visible: boolean;
-  pixels: string;
+  locked: boolean;
+  pixels: string; // RLE string
 }
 
-function validateImportData(data: string): ImportLayerData[] {
+interface ParsedFrameData {
+  id: string;
+  name: string;
+  duration: number;
+  activeLayerId: string;
+  layers: ParsedLayerData[];
+}
+
+/**
+ * Validates and parses the .anim file format.
+ */
+function validateAndParseAnimationData(data: string): {
+  fps: number;
+  frames: ParsedFrameData[];
+} {
   const lines = data.trim().split('\n');
-  if (lines.length < 1 || !lines[0].startsWith('#')) {
-    throw new Error(
-      'Invalid .layr format: Expected layer count header (e.g., #2)'
-    );
+  if (lines.length < 2 || !lines[0].startsWith('#ANIMATION')) {
+    throw new Error('Invalid .anim format: Missing #ANIMATION header.');
   }
 
-  const layerCount = parseInt(lines[0].slice(1));
-  if (isNaN(layerCount) || layerCount !== lines.length - 1) {
-    throw new Error('Invalid .layr format: Layer count mismatch');
+  if (!lines[1].startsWith('FPS:')) {
+    throw new Error('Invalid .anim format: Missing FPS property on line 2.');
+  }
+  const fps = parseInt(lines[1].split(':')[1]);
+  if (isNaN(fps)) {
+    throw new Error('Invalid .anim format: Invalid FPS value.');
   }
 
-  const layers: ImportLayerData[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const [id, name, visibleStr, pixels] = lines[i].split(';', 4);
-    if (!id || !name || !visibleStr || pixels === undefined) {
-      throw new Error(`Invalid .layr format: Malformed layer at line ${i + 1}`);
+  const frames: ParsedFrameData[] = [];
+  let currentFrame: ParsedFrameData | null = null;
+  let expectedLayerCount = 0;
+
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('#FRAME')) {
+      if (currentFrame) {
+        if (currentFrame.layers.length !== expectedLayerCount) {
+          throw new Error(
+            `Layer count mismatch for frame "${currentFrame.name}". Expected ${expectedLayerCount}, found ${currentFrame.layers.length}.`
+          );
+        }
+        frames.push(currentFrame);
+      }
+      currentFrame = {
+        id: '',
+        name: '',
+        duration: 100,
+        activeLayerId: '',
+        layers: [],
+      };
+      expectedLayerCount = 0;
+    } else if (currentFrame) {
+      if (line.startsWith('ID:')) {
+        currentFrame.id = line.substring(3);
+      } else if (line.startsWith('NAME:')) {
+        currentFrame.name = line.substring(5);
+      } else if (line.startsWith('DURATION:')) {
+        currentFrame.duration = parseInt(line.substring(9));
+      } else if (line.startsWith('ACTIVELAYER:')) {
+        currentFrame.activeLayerId = line.substring(12);
+      } else if (line.startsWith('#LAYERS:')) {
+        expectedLayerCount = parseInt(line.split(':')[1]);
+        if (isNaN(expectedLayerCount)) {
+          throw new Error(
+            `Invalid layer count for frame "${currentFrame.name}".`
+          );
+        }
+      } else if (currentFrame.layers.length < expectedLayerCount) {
+        const [id, name, visibleStr, lockedStr, pixels] = line.split(';', 5);
+        if (!id || !name || !visibleStr || !lockedStr || pixels === undefined) {
+          throw new Error(`Malformed layer data at line ${i + 1}.`);
+        }
+        currentFrame.layers.push({
+          id,
+          name,
+          visible: visibleStr === '1',
+          locked: lockedStr === '1',
+          pixels,
+        });
+      }
     }
-    if (id.trim() === '') {
-      throw new Error(
-        `Invalid .layr format: Layer ID must be non-empty at line ${i + 1}`
-      );
-    }
-    if (name.trim() === '') {
-      throw new Error(
-        `Invalid .layr format: Layer name must be non-empty at line ${i + 1}`
-      );
-    }
-    if (visibleStr !== '0' && visibleStr !== '1') {
-      throw new Error(
-        `Invalid .layr format: Layer visible must be 0 or 1 at line ${i + 1}`
-      );
-    }
-    layers.push({
-      id,
-      name,
-      visible: visibleStr === '1',
-      pixels,
-    });
   }
 
-  return layers;
+  if (currentFrame) {
+    if (currentFrame.layers.length !== expectedLayerCount) {
+      throw new Error(
+        `Layer count mismatch for frame "${currentFrame.name}". Expected ${expectedLayerCount}, found ${currentFrame.layers.length}.`
+      );
+    }
+    frames.push(currentFrame);
+  }
+
+  return { fps, frames };
 }
 
-export async function exportLayers(
-  layers: Layer[],
+/**
+ * Exports animation data to a string in the .anim format.
+ */
+export async function exportAnimation(
+  animation: { frames: Frame[]; fps: number },
   onProgress: (progress: ExportProgress) => void
 ): Promise<string> {
   const workers: Worker[] = [];
-  const results: { [key: string]: string } = {};
+  const results: { [compositeId: string]: string } = {};
+
+  // Flatten all layers from all frames to process them in parallel
+  const allLayers = animation.frames.flatMap((frame) =>
+    frame.layers.map((layer) => ({
+      frameId: frame.id,
+      layer,
+    }))
+  );
 
   try {
-    const promises = layers.map((layer) => {
+    const promises = allLayers.map(({ frameId, layer }) => {
       return new Promise<void>((resolve, reject) => {
         const worker = new Worker(workerURL);
         workers.push(worker);
+        const compositeId = `${frameId}|${layer.id}`;
 
         worker.onmessage = (e: MessageEvent) => {
           const { type, layerId, progress, result, error } = e.data;
@@ -91,7 +158,7 @@ export async function exportLayers(
 
         worker.onerror = (error) => {
           reject(
-            new Error(`Worker error for layer ${layer.id}: ${error.message}`)
+            new Error(`Worker error for layer ${compositeId}: ${error.message}`)
           );
         };
 
@@ -103,41 +170,65 @@ export async function exportLayers(
         worker.postMessage({
           action: 'encode',
           data: pixelArray,
-          layerId: layer.id,
+          layerId: compositeId,
         });
       });
     });
 
     await Promise.all(promises);
 
-    const lines = [`#${layers.length}`];
-    layers.forEach((layer) => {
-      const visible = layer.visible ? '1' : '0';
-      lines.push(
-        `${layer.id};${layer.name};${visible};${results[layer.id] || ''}`
+    // Build the final .anim string
+    const output: string[] = ['#ANIMATION', `FPS:${animation.fps}`];
+
+    animation.frames.forEach((frame) => {
+      output.push(
+        '#FRAME',
+        `ID:${frame.id}`,
+        `NAME:${frame.name}`,
+        `DURATION:${frame.duration}`,
+        `ACTIVELAYER:${frame.activeLayerId}`,
+        `#LAYERS:${frame.layers.length}`
       );
+      frame.layers.forEach((layer) => {
+        const compositeId = `${frame.id}|${layer.id}`;
+        const visible = layer.visible ? '1' : '0';
+        const locked = layer.locked ? '1' : '0';
+        const pixels = results[compositeId] || '';
+        output.push(`${layer.id};${layer.name};${visible};${locked};${pixels}`);
+      });
     });
 
-    return lines.join('\n');
+    return output.join('\n');
   } finally {
     workers.forEach((worker) => worker.terminate());
   }
 }
 
-export async function importLayers(
+/**
+ * Imports animation data from a string.
+ */
+export async function importAnimation(
   data: string,
   onProgress: (progress: ImportProgress) => void
-): Promise<Layer[]> {
+): Promise<{ frames: Frame[]; fps: number }> {
   const workers: Worker[] = [];
-  const results: { [key: string]: Map<string, number> } = {};
+  const results: { [compositeId: string]: Map<string, number> } = {};
 
   try {
-    const importData = validateImportData(data);
+    const { fps, frames: parsedFrames } = validateAndParseAnimationData(data);
 
-    const promises = importData.map((layerData) => {
+    const allLayersToDecode = parsedFrames.flatMap((frame) =>
+      frame.layers.map((layer) => ({
+        frameId: frame.id,
+        layerData: layer,
+      }))
+    );
+
+    const promises = allLayersToDecode.map(({ frameId, layerData }) => {
       return new Promise<void>((resolve, reject) => {
         const worker = new Worker(workerURL);
         workers.push(worker);
+        const compositeId = `${frameId}|${layerData.id}`;
 
         worker.onmessage = (e: MessageEvent) => {
           const { type, layerId, progress, result, error } = e.data;
@@ -146,26 +237,8 @@ export async function importLayers(
           } else if (type === 'result') {
             try {
               const pixelArray = result as [number, number, number][];
-              if (!Array.isArray(pixelArray)) {
-                reject(
-                  new Error(`Invalid pixel data format for layer ${layerId}`)
-                );
-                return;
-              }
               const pixels = new Map<string, number>();
               for (const [x, y, color] of pixelArray) {
-                if (
-                  typeof x !== 'number' ||
-                  typeof y !== 'number' ||
-                  typeof color !== 'number'
-                ) {
-                  reject(
-                    new Error(
-                      `Invalid pixel entry for layer ${layerId}: ${x},${y}:${color}`
-                    )
-                  );
-                  return;
-                }
                 pixels.set(`${x},${y}`, color);
               }
               results[layerId] = pixels;
@@ -184,34 +257,48 @@ export async function importLayers(
 
         worker.onerror = (error) => {
           reject(
-            new Error(
-              `Worker error for layer ${layerData.id}: ${error.message}`
-            )
+            new Error(`Worker error for layer ${compositeId}: ${error.message}`)
           );
         };
 
         worker.postMessage({
           action: 'decode',
           data: layerData.pixels,
-          layerId: layerData.id,
+          layerId: compositeId,
         });
       });
     });
 
     await Promise.all(promises);
 
-    return importData.map((layerData) => {
-      const pixels = results[layerData.id];
-      if (!pixels) {
-        throw new Error(`No pixel data for layer ${layerData.id}`);
-      }
+    // Reconstruct the Frame[] array
+    const frames: Frame[] = parsedFrames.map((parsedFrame) => {
+      const layers: Layer[] = parsedFrame.layers.map((parsedLayer) => {
+        const compositeId = `${parsedFrame.id}|${parsedLayer.id}`;
+        const pixels = results[compositeId];
+        if (!pixels) {
+          throw new Error(
+            `Missing decoded pixel data for layer ${compositeId}`
+          );
+        }
+        return {
+          id: parsedLayer.id,
+          name: parsedLayer.name,
+          visible: parsedLayer.visible,
+          locked: parsedLayer.locked,
+          pixels,
+        };
+      });
       return {
-        id: layerData.id,
-        name: layerData.name,
-        visible: layerData.visible,
-        pixels,
+        id: parsedFrame.id,
+        name: parsedFrame.name,
+        duration: parsedFrame.duration,
+        activeLayerId: parsedFrame.activeLayerId,
+        layers,
       };
     });
+
+    return { frames, fps };
   } finally {
     workers.forEach((worker) => worker.terminate());
   }

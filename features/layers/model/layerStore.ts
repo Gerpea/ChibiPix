@@ -1,10 +1,6 @@
+// features/layers/model/layerStore.ts
+
 import { useHistoryStore } from '@/features/history/model/historyStore';
-import {
-  exportLayers,
-  ExportProgress,
-  importLayers,
-  ImportProgress,
-} from '@/features/serialization/utils';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
@@ -37,13 +33,7 @@ interface LayerStoreState {
   setLayers: (layers: Layer[], activeLayerId?: string) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
-  exportData: (
-    onProgress: (progress: ExportProgress) => void
-  ) => Promise<string>;
-  importData: (
-    data: string,
-    onProgress: (progress: ImportProgress) => void
-  ) => Promise<void>;
+  // exportData and importData are removed from here
 }
 
 export const useLayerStore = create<LayerStoreState>()(
@@ -66,6 +56,7 @@ export const useLayerStore = create<LayerStoreState>()(
         activeLayerId: defaultLayer.id,
         aiAreas: {},
 
+        // ... All other functions (addLayer, removeLayer, etc.) remain unchanged ...
         addLayer: (name = 'Layer') => {
           const newLayer: Layer = {
             id: Date.now().toString(),
@@ -255,36 +246,6 @@ export const useLayerStore = create<LayerStoreState>()(
               .updateCurrentFrameLayers(layers, state.activeLayerId);
             return { layers };
           });
-        },
-
-        exportData: async (onProgress) => {
-          try {
-            const data = await exportLayers(get().layers, onProgress);
-            console.log('Exported .layr data:', data);
-            return data;
-          } catch (error) {
-            console.error('Export failed:', (error as Error).message);
-            throw error;
-          }
-        },
-
-        importData: async (data, onProgress) => {
-          try {
-            const layers = await importLayers(data, onProgress);
-            set((state) => {
-              const activeLayerId =
-                layers.length > 0 ? layers[0].id : state.activeLayerId;
-              console.log('Imported layers:', layers);
-              pushHistory();
-              useAnimationStore
-                .getState()
-                .updateCurrentFrameLayers(layers, activeLayerId);
-              return { layers, activeLayerId };
-            });
-          } catch (error) {
-            console.error('Import failed:', (error as Error).message);
-            throw error;
-          }
         },
       };
     },
