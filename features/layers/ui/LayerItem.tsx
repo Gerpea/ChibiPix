@@ -16,13 +16,7 @@ import {
   Layer,
   useAnimationStore,
 } from '@/features/animation/model/animationStore';
-
-// Utility function to convert 32-bit integer color to hex string
-// This helper function remains unchanged.
-const intToHex = (color: number): string => {
-  if (color === 0) return 'transparent';
-  return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
-};
+import { intToHex } from '@/shared/utils/colors';
 
 interface LayerItemProps {
   id: string;
@@ -85,7 +79,6 @@ export const LayerItem: React.FC<LayerItemProps> = ({
         maxY = Math.max(maxY, y);
       }
     } else {
-      // Handle case with no pixels gracefully
       minX = 0;
       maxX = 0;
       minY = 0;

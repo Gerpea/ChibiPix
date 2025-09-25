@@ -14,7 +14,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
 
 const rgbaToHex = (r: number, g: number, b: number, a: number): string => {
-  // Validate inputs
   if (
     r < 0 ||
     r > 255 ||
@@ -28,7 +27,6 @@ const rgbaToHex = (r: number, g: number, b: number, a: number): string => {
     throw new Error('RGBA values out of range');
   }
 
-  // Convert RGB to hex and alpha (0-1) to 0-255 hex
   const rHex = r.toString(16).padStart(2, '0');
   const gHex = g.toString(16).padStart(2, '0');
   const bHex = b.toString(16).padStart(2, '0');
@@ -36,7 +34,6 @@ const rgbaToHex = (r: number, g: number, b: number, a: number): string => {
     .toString(16)
     .padStart(2, '0');
 
-  // Return 8-digit hex (RRGGBBAA)
   return `#${rHex}${gHex}${bHex}${aHex}`.toUpperCase();
 };
 
@@ -73,10 +70,8 @@ export const Toolbar: React.FC = () => {
         </ToggleGroupItem>
       </ToggleGroup>
 
-      {/* Colors */}
       <div className="relative mt-auto flex flex-col items-center gap-2">
         <div className="relative flex gap-1">
-          {/* Primary color */}
           <Popover>
             <PopoverTrigger>
               <div
@@ -104,7 +99,6 @@ export const Toolbar: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Secondary color */}
           <Popover>
             <PopoverTrigger>
               <div
@@ -132,7 +126,6 @@ export const Toolbar: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Swap button as small overlay */}
           <button
             onClick={swapColors}
             className="absolute -top-4 left-1/2 z-10 m-0 flex h-fit w-fit -translate-x-1/2 cursor-pointer items-center justify-center p-0"

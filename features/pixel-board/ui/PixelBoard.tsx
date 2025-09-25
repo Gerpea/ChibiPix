@@ -657,7 +657,6 @@ export const PixelBoard: React.FC = () => {
               wrap="word"
               fill="black"
             />
-            {/* Stop button in top-right corner */}
             <Group
               x={aiScreenX + aiScreenWidth - 30}
               y={aiScreenY + 10}

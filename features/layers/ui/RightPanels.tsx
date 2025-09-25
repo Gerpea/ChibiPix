@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
+import { AIPromptInput } from '@/features/ai-generation/ui/AiPromptInput';
 import { LayerPanel } from './LayerPanel';
 import { ToolSettings } from './ToolSettings';
-import { AIPromptInput } from '@/features/ai-generation/ui/AiPromptInput';
 
 export const RightPanel: React.FC = () => {
   return (

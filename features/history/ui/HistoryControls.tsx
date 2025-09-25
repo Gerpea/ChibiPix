@@ -1,8 +1,8 @@
 'use client';
 
+import { RotateCcwIcon, RotateCwIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { useHistoryStore } from '../model/historyStore';
-import { RotateCcwIcon, RotateCwIcon } from 'lucide-react';
 
 export const HistoryControls = () => {
   const { undo, redo } = useHistoryStore();

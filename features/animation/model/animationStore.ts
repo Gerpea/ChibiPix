@@ -8,8 +8,6 @@ import {
   ImportProgress,
 } from '@/features/serialization/utils';
 
-// --- Interfaces (remain largely the same) ---
-
 export interface Layer {
   id: string;
   name: string;
@@ -26,10 +24,7 @@ export interface Frame {
   duration: number;
 }
 
-// --- Unified State and Actions Interface ---
-
 interface AnimationState {
-  // Animation-level state
   frames: Frame[];
   currentFrameIndex: number;
   fps: number;
@@ -38,7 +33,6 @@ interface AnimationState {
   currentTime: number;
   aiAreas: Record<string, { startX: number; startY: number }>;
 
-  // Animation actions
   addFrame: (duplicateCurrent?: boolean) => void;
   removeFrame: (index: number) => void;
   moveFrame: (fromIndex: number, toIndex: number) => void;
@@ -50,7 +44,6 @@ interface AnimationState {
   stop: () => void;
   setCurrentTime: (time: number) => void;
 
-  // Layer actions (now part of the animation store)
   addLayer: (name?: string) => void;
   removeLayer: (id: string) => void;
   duplicateLayer: (layerId: string) => void;
@@ -66,11 +59,9 @@ interface AnimationState {
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
 
-  // AI Area actions
   addAIArea: (id: string, area: { startX: number; startY: number }) => void;
   removeAIArea: (id: string) => void;
 
-  // Import/Export
   exportAnimationData: (
     onProgress: (progress: ExportProgress) => void
   ) => Promise<string>;
@@ -79,8 +70,6 @@ interface AnimationState {
     onProgress: (progress: ImportProgress) => void
   ) => Promise<void>;
 }
-
-// --- Helper Functions ---
 
 function deepCloneLayers(layers: Layer[]): {
   layers: Layer[];
@@ -96,12 +85,9 @@ function deepCloneLayers(layers: Layer[]): {
   return { layers: clonedLayers, idMap };
 }
 
-// --- The Unified Store ---
-
 export const useAnimationStore = create<AnimationState>()(
   devtools(
     (set, get) => {
-      // --- Initialization ---
       const defaultLayer: Layer = {
         id: Date.now().toString(),
         name: 'Layer 1',
@@ -119,7 +105,6 @@ export const useAnimationStore = create<AnimationState>()(
       };
 
       return {
-        // --- Initial State ---
         frames: [initialFrame],
         currentFrameIndex: 0,
         fps: 12,
@@ -128,7 +113,6 @@ export const useAnimationStore = create<AnimationState>()(
         currentTime: 0,
         aiAreas: {},
 
-        // --- Animation Actions ---
         addFrame: (duplicateCurrent = false) => {
           set((state) => {
             const currentFrame = state.frames[state.currentFrameIndex];

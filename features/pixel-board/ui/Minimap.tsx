@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Stage, Layer as KonvaLayer, Image as KonvaImage } from 'react-konva';
 import Konva from 'konva';
-import { Layer } from '@/features/layers/model/layerStore';
+import { Layer } from '@/features/animation/model/animationStore';
 
 const MINIMAP_SIZE = 150;
 
@@ -334,7 +334,7 @@ export const Minimap: React.FC<MinimapProps> = ({
         <KonvaLayer>
           <KonvaImage
             image={minimapCanvasRef.current}
-            width={MINIMAP_SIZE - 4} // 4 - from padding size
+            width={MINIMAP_SIZE - 4}
             height={MINIMAP_SIZE - 4}
           />
         </KonvaLayer>
