@@ -76,7 +76,6 @@ export const PixelBoard: React.FC = () => {
     [layers, activeLayerId]
   );
 
-  // Calculate world bounds
   useEffect(() => {
     let minX = Infinity,
       minY = Infinity,
@@ -102,7 +101,6 @@ export const PixelBoard: React.FC = () => {
     setWorldBounds({ minX, minY, maxX, maxY });
   }, [layers]);
 
-  // FIX: Manage a stable pool of canvas elements based on layer count.
   useEffect(() => {
     const requiredCanvases = layers.length;
     canvasRefs.current.length = requiredCanvases;
@@ -121,12 +119,10 @@ export const PixelBoard: React.FC = () => {
     }
   }, [layers.length, stageWidth, stageHeight]);
 
-  // Update pointer color
   useEffect(() => {
     pointerColor.current = hexToInt(primaryColor);
   }, [primaryColor]);
 
-  // FIX: Redraw layers using indices for stable canvas access.
   const redrawLayers = useCallback(() => {
     checkerboardRef.current?.redraw();
     if (!stageRef.current) return;
@@ -248,7 +244,6 @@ export const PixelBoard: React.FC = () => {
     pendingPixels.current.clear();
   }, [setLayerPixels]);
 
-  // FIX: Update drawPixel to use the active layer's index.
   const drawPixel = (row: number, col: number, color: number) => {
     if (!layer || !layer.visible || !activeLayerId || layer.locked) return;
 
@@ -311,6 +306,9 @@ export const PixelBoard: React.FC = () => {
           color: adjustedColor,
         });
 
+        // flushPendingPixels();
+        // redrawLayers();
+
         const worldX = px * PIXEL_SIZE;
         const worldY = py * PIXEL_SIZE;
         const hexColor = intToHex(adjustedColor);
@@ -327,9 +325,8 @@ export const PixelBoard: React.FC = () => {
     ctx.restore();
   };
 
-  // ... (fillPixels and other handlers remain largely the same) ...
   const fillPixels = (startRow: number, startCol: number, color: number) => {
-    if (!layer || !layer.visible || !activeLayerId || layer.locked) return;
+    if (!layer || !layer.visible || layer.locked) return;
 
     if (
       Object.values(aiAreas).some(
@@ -346,56 +343,59 @@ export const PixelBoard: React.FC = () => {
     const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
     if (targetColor === color) return;
 
-    const maxPixels = 25000; // Safety break
+    const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
+    const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
+    const maxPixelX = Math.ceil(
+      (panWorldX + stageWidth / stageScale) / PIXEL_SIZE
+    );
+    const maxPixelY = Math.ceil(
+      (panWorldY + stageHeight / stageScale) / PIXEL_SIZE
+    );
 
     const newPixels: { x: number; y: number; color: number }[] = [];
-    const stack: [number, number][] = [[startRow, startCol]];
+    const stack = [[startRow, startCol]];
     const visited = new Set<string>();
-    visited.add(`${startCol},${startRow}`);
 
-    let iterations = 0;
-
-    while (stack.length > 0) {
-      iterations++;
-      if (iterations > maxPixels) break; // Safety break
-
+    while (stack.length) {
       const [row, col] = stack.pop()!;
+      const key = `${col},${row}`;
+      if (visited.has(key)) continue;
 
-      const inAiArea = Object.values(aiAreas).some(
-        (area) =>
-          col >= area.startX &&
-          col < area.startX + 16 &&
-          row >= area.startY &&
-          row < area.startY + 16
-      );
-      if (inAiArea) continue;
-
-      const currentColor = pixels.get(`${col},${row}`) ?? 0;
-
-      if (currentColor === targetColor) {
-        newPixels.push({ x: col, y: row, color });
-
-        const neighbors: [number, number][] = [
-          [row + 1, col],
-          [row - 1, col],
-          [row, col + 1],
-          [row, col - 1],
-        ];
-
-        for (const [nRow, nCol] of neighbors) {
-          const key = `${nCol},${nRow}`;
-          if (!visited.has(key)) {
-            stack.push([nRow, nCol]);
-            visited.add(key);
-          }
-        }
+      if (
+        col < minPixelX ||
+        col >= maxPixelX ||
+        row < minPixelY ||
+        row >= maxPixelY
+      ) {
+        continue;
       }
+
+      if (
+        Object.values(aiAreas).some(
+          (area) =>
+            col >= area.startX &&
+            col < area.startX + 16 &&
+            row >= area.startY &&
+            row < area.startY + 16
+        )
+      )
+        continue;
+
+      const currentColor = pixels.get(key) ?? 0;
+      if (currentColor !== targetColor) continue;
+
+      visited.add(key);
+      newPixels.push({ x: col, y: row, color });
+
+      stack.push([row + 1, col]);
+      stack.push([row - 1, col]);
+      stack.push([row, col + 1]);
+      stack.push([row, col - 1]);
     }
 
-    if (newPixels.length > 0 && activeLayerId) {
-      const existing = pendingPixels.current.get(activeLayerId) || [];
-      pendingPixels.current.set(activeLayerId, [...existing, ...newPixels]);
-    }
+    pendingPixels.current.set(activeLayerId, newPixels);
+    flushPendingPixels();
+    redrawLayers();
   };
 
   const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -418,8 +418,6 @@ export const PixelBoard: React.FC = () => {
       fillPixels(row, col, pointerColor.current);
     }
   };
-
-  // ... (mouse handlers, context menu, wheel, cursor logic remains the same) ...
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current;
@@ -497,11 +495,6 @@ export const PixelBoard: React.FC = () => {
     const oldScale = stageScale;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
-
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
 
     const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
     const boundedScale = Math.max(0.5, Math.min(newScale, 32));
@@ -590,11 +583,10 @@ export const PixelBoard: React.FC = () => {
           ref={checkerboardRef}
         />
 
-        {/* FIX: Use index as the key and for refs to prevent remounting */}
         {layers.map(
           (layer, index) =>
             layer.visible && (
-              <Layer key={index} opacity={layer.opacity / 100}>
+              <Layer key={layer.id} opacity={layer.opacity / 100}>
                 <Image
                   ref={(node) => {
                     if (node) {

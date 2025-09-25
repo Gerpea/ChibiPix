@@ -1,7 +1,7 @@
 'use client';
 
-import React, { JSX, useEffect, useRef, useState } from 'react';
-import { useAnimationStore } from '../model/animationStore';
+import React, { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { Layer, useAnimationStore } from '../model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -32,8 +32,6 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { type Layer } from '@/features/layers/model/layerStore';
 import {
   Collapsible,
   CollapsibleContent,
@@ -68,7 +66,11 @@ const FrameItem: React.FC<FrameItemProps> = ({
   const [localDuration, setLocalDuration] = useState(frame.duration);
 
   useEffect(() => {
-    setLocalDuration(frame.duration);
+    const delta = 0;
+    const candidateDuration = frame.duration + delta / scale;
+    const numTicks = Math.max(1, Math.round(candidateDuration / tickDuration));
+    const newDuration = numTicks * tickDuration;
+    setLocalDuration(newDuration);
   }, [frame.duration]);
 
   useEffect(() => {
@@ -194,27 +196,29 @@ const FrameItem: React.FC<FrameItemProps> = ({
     document.addEventListener('mouseup', onPointerUp);
   };
 
-  const minWidth = tickDuration * scale;
-  const width = localDuration * scale;
+  const minWidth = useMemo(() => tickDuration * scale, [tickDuration, scale]);
+  const width = useMemo(() => localDuration * scale, [localDuration, scale]);
 
-  const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-    transition: isDragging ? undefined : transition,
-    zIndex: isDragging ? 999 : 'auto',
-    boxShadow: isDragging ? '0 4px 8px rgba(0, 0, 0, 0.2)' : 'none',
-    width: `${width}px`,
-    minWidth: `${minWidth}px`,
-    flexShrink: 0,
-  };
+  const style = useMemo(
+    () => ({
+      transform: transform
+        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+        : undefined,
+      transition: isDragging ? undefined : transition,
+      zIndex: isDragging ? 999 : 'auto',
+      boxShadow: isDragging ? '0 4px 8px rgba(0, 0, 0, 0.2)' : 'none',
+      width: `${width}px`,
+      minWidth: `${minWidth}px`,
+      flexShrink: 0,
+    }),
+    [width, minWidth, transform]
+  );
 
   const handleSelect = () => {
     setCurrentFrame(index);
     setCurrentTime(
       frames.slice(0, index).reduce((acc, f) => acc + f.duration, 0)
     );
-    // state.frames.slice(0, index).reduce((acc, f) => acc + f.duration, 0);
   };
 
   return (
