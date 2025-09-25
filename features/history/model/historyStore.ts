@@ -1,10 +1,28 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { Layer, useLayerStore } from '@/features/layers/model/layerStore';
+import {
+  Frame,
+  useAnimationStore,
+} from '@/features/animation/model/animationStore';
+
+const deepCloneFrames = (frames: Frame[]): Frame[] => {
+  return frames.map((frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => ({
+      ...layer,
+      pixels: new Map(layer.pixels),
+    })),
+  }));
+};
+
+interface HistorySnapshot {
+  frames: Frame[];
+  currentFrameIndex: number;
+}
 
 interface HistoryState {
-  past: Layer[][];
-  future: Layer[][];
+  past: HistorySnapshot[];
+  future: HistorySnapshot[];
   push: () => void;
   undo: () => void;
   redo: () => void;
@@ -18,67 +36,65 @@ export const useHistoryStore = create<HistoryState>()(
       future: [],
 
       push: () => {
-        const layers = useLayerStore.getState().layers.map((l) => ({
-          id: l.id,
-          pixels: new Map(l.pixels), // Deep copy of Map
-          visible: l.visible,
-          name: l.name,
+        const { frames, currentFrameIndex } = useAnimationStore.getState();
+
+        const newSnapshot: HistorySnapshot = {
+          frames: deepCloneFrames(frames),
+          currentFrameIndex,
+        };
+
+        set((state) => ({
+          past: [...state.past, newSnapshot],
+          future: [],
         }));
-        set({ past: [...get().past, layers], future: [] });
       },
 
       undo: () => {
         const { past, future } = get();
         if (past.length === 0) return;
 
-        const currentLayers = useLayerStore.getState().layers.map((l) => ({
-          id: l.id,
-          pixels: new Map(l.pixels), // Deep copy of Map
-          visible: l.visible,
-          name: l.name,
-        }));
+        const { frames: currentFrames, currentFrameIndex: currentFrameIdx } =
+          useAnimationStore.getState();
+        const presentSnapshot: HistorySnapshot = {
+          frames: deepCloneFrames(currentFrames),
+          currentFrameIndex: currentFrameIdx,
+        };
 
-        const previous = past[past.length - 1] as Layer[];
+        const previousSnapshot = past[past.length - 1];
 
-        // Restore full layers array
-        useLayerStore.setState({
-          layers: previous.map((l) => ({
-            id: l.id,
-            pixels: new Map(l.pixels), // Deep copy of Map
-            visible: l.visible,
-            name: l.name,
-          })),
-          activeLayerId: previous[0]?.id ?? null,
+        useAnimationStore.setState({
+          frames: deepCloneFrames(previousSnapshot.frames),
+          currentFrameIndex: previousSnapshot.currentFrameIndex,
         });
 
-        set({ past: past.slice(0, -1), future: [currentLayers, ...future] });
+        set({
+          past: past.slice(0, -1),
+          future: [presentSnapshot, ...future],
+        });
       },
 
       redo: () => {
         const { past, future } = get();
         if (future.length === 0) return;
 
-        const currentLayers = useLayerStore.getState().layers.map((l) => ({
-          id: l.id,
-          pixels: new Map(l.pixels), // Deep copy of Map
-          visible: l.visible,
-          name: l.name,
-        }));
+        const { frames: currentFrames, currentFrameIndex: currentFrameIdx } =
+          useAnimationStore.getState();
+        const presentSnapshot: HistorySnapshot = {
+          frames: deepCloneFrames(currentFrames),
+          currentFrameIndex: currentFrameIdx,
+        };
 
-        const next = future[0] as Layer[];
+        const nextSnapshot = future[0];
 
-        // Restore full layers array
-        useLayerStore.setState({
-          layers: next.map((l) => ({
-            id: l.id,
-            pixels: new Map(l.pixels),
-            visible: l.visible,
-            name: l.name,
-          })),
-          activeLayerId: next[0]?.id ?? null,
+        useAnimationStore.setState({
+          frames: deepCloneFrames(nextSnapshot.frames),
+          currentFrameIndex: nextSnapshot.currentFrameIndex,
         });
 
-        set({ past: [...past, currentLayers], future: future.slice(1) });
+        set({
+          past: [...past, presentSnapshot],
+          future: future.slice(1),
+        });
       },
 
       clear: () => set({ past: [], future: [] }),

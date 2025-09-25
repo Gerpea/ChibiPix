@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { useLayerStore } from '@/features/layers/model/layerStore';
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { ChatOpenAI } from '@langchain/openai';
 import { RunnableSequence } from '@langchain/core/runnables';
@@ -12,7 +11,10 @@ import { z } from 'zod';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import { hexToInt } from '@/shared/utils/colors';
 import { jsonrepair } from 'jsonrepair';
-import type { Layer } from '@/features/layers/model/layerStore';
+import {
+  useAnimationStore,
+  type Layer,
+} from '@/features/animation/model/animationStore';
 
 interface Generation {
   id: string;
@@ -266,7 +268,31 @@ export const useAIStore = create<AIState>()(
           return;
         }
 
-        const { layers, aiAreas } = useLayerStore.getState();
+        const animationState = useAnimationStore.getState();
+        const currentFrame =
+          animationState.frames[animationState.currentFrameIndex];
+        if (!currentFrame) {
+          // Handle error if no frame exists
+          set((state) => ({
+            generations: {
+              ...state.generations,
+              [id]: {
+                id,
+                prompt,
+                isGenerating: false,
+                error: 'Cannot generate without an active frame.',
+                progress: 0,
+                thoughts: [],
+                abortController: null,
+                area: null,
+              },
+            },
+          }));
+          return;
+        }
+        const { layers, activeLayerId } = currentFrame;
+        const { aiAreas } = animationState;
+        const activeLayerIdForGeneration = activeLayerId;
         let area;
         try {
           area = findEmpty16x16(layers, aiAreas);
@@ -291,9 +317,9 @@ export const useAIStore = create<AIState>()(
 
         const abortController = new AbortController();
 
-        set({
+        set((state) => ({
           generations: {
-            ...get().generations,
+            ...state.generations,
             [id]: {
               id,
               prompt,
@@ -305,9 +331,9 @@ export const useAIStore = create<AIState>()(
               area,
             },
           },
-        });
+        }));
 
-        useLayerStore.getState().addAIArea(id, area);
+        useAnimationStore.getState().addAIArea(id, area);
 
         const signal = abortController.signal;
 
@@ -447,8 +473,7 @@ export const useAIStore = create<AIState>()(
           const executeDrawPixel = async (
             pixels: { x: number; y: number; color: string }[]
           ) => {
-            const { setLayerPixels } = useLayerStore.getState();
-            const activeLayerId = useLayerStore.getState().activeLayerId;
+            const { setLayerPixels } = useAnimationStore.getState();
             const pixelData = pixels
               .map(({ x, y, color }) => ({
                 x: area.startX + x,
@@ -628,7 +653,7 @@ export const useAIStore = create<AIState>()(
               },
             },
           }));
-          useLayerStore.getState().removeAIArea(id);
+          useAnimationStore.getState().removeAIArea(id);
         }
       },
       stopGeneration: (id) => {
@@ -645,7 +670,7 @@ export const useAIStore = create<AIState>()(
               },
             },
           }));
-          useLayerStore.getState().removeAIArea(id);
+          useAnimationStore.getState().removeAIArea(id);
         }
       },
     }),

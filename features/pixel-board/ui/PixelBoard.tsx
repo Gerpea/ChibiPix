@@ -10,15 +10,19 @@ import React, {
 import { Stage, Layer, Image, Rect, Text, Group } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
-import { useLayerStore } from '@/features/layers/model/layerStore';
 import { useAIStore } from '@/features/ai-generation/models/aiStore';
 import { Checkerboard, CheckerboardHandle } from './Checkerboard';
 import { Minimap } from './Minimap';
 import { PIXEL_SIZE } from '../const';
 import { adjustColorOpacity, hexToInt, intToHex } from '@/shared/utils/colors';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 
 export const PixelBoard: React.FC = () => {
-  const { layers, setLayerPixels, activeLayerId, aiAreas } = useLayerStore();
+  const currentFrame = useAnimationStore(
+    (state) => state.frames[state.currentFrameIndex]
+  );
+  const { setLayerPixels, aiAreas } = useAnimationStore();
+
   const { primaryColor, secondaryColor, currentTool, toolSettings } =
     useToolbarStore();
   const { generations, stopGeneration } = useAIStore();
@@ -62,6 +66,9 @@ export const PixelBoard: React.FC = () => {
       Object.values(generations).filter((gen) => gen.isGenerating && gen.area),
     [generations]
   );
+
+  const layers = currentFrame?.layers ?? [];
+  const activeLayerId = currentFrame?.activeLayerId ?? null;
 
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
@@ -229,6 +236,7 @@ export const PixelBoard: React.FC = () => {
     });
     pendingPixels.current.clear();
 
+    if (!activeLayerId) return;
     const canvas = canvasRefs.current.get(activeLayerId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -674,16 +682,13 @@ export const PixelBoard: React.FC = () => {
     </Layer>
   );
 
-  // const checkerboard = <Layer listening={false}>
-  //   <Image
-  //     ref={imageRef}
-  //     image={canvasRef.current}
-  //     width={stageWidth}
-  //     height={stageHeight}
-  //     x={0}
-  //     y={0}
-  //   />
-  // </Layer>
+  if (!currentFrame) {
+    return (
+      <div className="relative m-0 flex h-full max-h-full w-full max-w-full items-center justify-center p-0">
+        <div className="text-gray-500">Loading Canvas...</div>
+      </div>
+    );
+  }
 
   return (
     <div

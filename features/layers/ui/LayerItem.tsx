@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Layer, useLayerStore } from '../model/layerStore';
 import {
   EyeIcon,
   GripIcon,
@@ -13,8 +12,13 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
+import {
+  Layer,
+  useAnimationStore,
+} from '@/features/animation/model/animationStore';
 
 // Utility function to convert 32-bit integer color to hex string
+// This helper function remains unchanged.
 const intToHex = (color: number): string => {
   if (color === 0) return 'transparent';
   return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
@@ -35,8 +39,14 @@ export const LayerItem: React.FC<LayerItemProps> = ({
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
-  const { setActiveLayer, toggleVisibility, toggleLock, setLayerName } =
-    useLayerStore();
+
+  const {
+    setActiveLayer,
+    toggleLayerVisibility,
+    toggleLayerLock,
+    setLayerName,
+  } = useAnimationStore();
+
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(layer.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,20 +68,15 @@ export const LayerItem: React.FC<LayerItemProps> = ({
     if (!ctx) return;
 
     const pixelSize = 2;
-    const padding = 4; // Padding in pixels around the content
-    const previewSize = 48; // Canvas size (48x48 pixels)
+    const padding = 4;
+    const previewSize = 48;
 
-    // Compute bounds to include all drawn pixels, even outside nominal layer width/height
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
 
     if (layer.pixels.size > 0) {
-      minX = Infinity;
-      maxX = -Infinity;
-      minY = Infinity;
-      maxY = -Infinity;
       for (const key of layer.pixels.keys()) {
         const [x, y] = key.split(',').map(Number);
         minX = Math.min(minX, x);
@@ -79,16 +84,20 @@ export const LayerItem: React.FC<LayerItemProps> = ({
         minY = Math.min(minY, y);
         maxY = Math.max(maxY, y);
       }
+    } else {
+      // Handle case with no pixels gracefully
+      minX = 0;
+      maxX = 0;
+      minY = 0;
+      maxY = 0;
     }
 
     const effectiveWidth = Math.max(1, maxX - minX + 1);
     const effectiveHeight = Math.max(1, maxY - minY + 1);
 
-    // Set canvas size
     canvas.width = previewSize;
     canvas.height = previewSize;
 
-    // Calculate scale to fit content within previewSize while preserving aspect ratio
     const contentWidth = effectiveWidth * pixelSize;
     const contentHeight = effectiveHeight * pixelSize;
     const scale = Math.min(
@@ -101,7 +110,6 @@ export const LayerItem: React.FC<LayerItemProps> = ({
     const offsetX = (previewSize - scaledWidth) / 2;
     const offsetY = (previewSize - scaledHeight) / 2;
 
-    // Draw checkerboard background across entire canvas
     const checkerSize = pixelSize * 4;
     for (let y = 0; y < canvas.height; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
@@ -113,12 +121,10 @@ export const LayerItem: React.FC<LayerItemProps> = ({
       }
     }
 
-    // Save context and apply scaling
     ctx.save();
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
 
-    // Draw non-transparent pixels from Map, offset to fit in effective bounds
     for (const [key, color] of layer.pixels.entries()) {
       const [x, y] = key.split(',').map(Number);
       const adjustedX = (x - minX) * pixelSize;
@@ -150,7 +156,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
             size="small-icon"
             variant="ghost"
             className="cursor-pointer"
-            onClick={() => toggleVisibility(layer.id)}
+            onClick={() => toggleLayerVisibility(layer.id)}
           >
             <EyeIcon className="h-4 w-4" />
           </Button>
@@ -159,7 +165,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
             size="small-icon"
             variant="ghost"
             className="cursor-pointer"
-            onClick={() => toggleVisibility(layer.id)}
+            onClick={() => toggleLayerVisibility(layer.id)}
           >
             <EyeOffIcon className="h-4 w-4" />
           </Button>
@@ -203,7 +209,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
                 size="small-icon"
                 variant="ghost"
                 className="cursor-pointer"
-                onClick={() => toggleLock(layer.id)}
+                onClick={() => toggleLayerLock(layer.id)}
               >
                 <LockIcon className="h-4 w-4" />
               </Button>
@@ -212,7 +218,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
                 size="small-icon"
                 variant="ghost"
                 className="cursor-pointer"
-                onClick={() => toggleLock(layer.id)}
+                onClick={() => toggleLayerLock(layer.id)}
               >
                 <LockOpenIcon className="h-4 w-4" />
               </Button>

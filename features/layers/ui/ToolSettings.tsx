@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useToolbarStore, Tool } from '@/features/toolbar/model/toolbarStore';
+import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { Slider } from '@/shared/ui/Slider';
 
 export const ToolSettings: React.FC = () => {
