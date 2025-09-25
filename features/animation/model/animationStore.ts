@@ -101,7 +101,7 @@ export const useAnimationStore = create<AnimationState>()(
         name: 'Frame 1',
         layers: [defaultLayer],
         activeLayerId: defaultLayer.id,
-        duration: 100,
+        duration: 1000 / 12,
       };
 
       return {
@@ -145,7 +145,7 @@ export const useAnimationStore = create<AnimationState>()(
               name: `Frame ${state.frames.length + 1}`,
               layers: newLayers,
               activeLayerId: newActiveLayerId,
-              duration: currentFrame?.duration ?? 100,
+              duration: currentFrame?.duration ?? 1000 / 12,
             };
 
             const frames = [...state.frames, newFrame];
