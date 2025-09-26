@@ -81,6 +81,7 @@ export const PixelBoard: React.FC = () => {
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
+
     layers.forEach((layer) => {
       if (layer.visible) {
         for (const [key] of layer.pixels.entries()) {
@@ -148,8 +149,10 @@ export const PixelBoard: React.FC = () => {
       if (layer.visible) {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.scale(stageScale, stageScale);
-        ctx.translate(-panWorldX, -panWorldY);
+        ctx.imageSmoothingQuality = 'low';
+        const snappedPanX = Math.floor(-panWorldX * stageScale);
+        const snappedPanY = Math.floor(-panWorldY * stageScale);
+        ctx.translate(snappedPanX, snappedPanY);
 
         for (const [key, color] of layer.pixels.entries()) {
           const [x, y] = key.split(',').map(Number);
@@ -163,10 +166,10 @@ export const PixelBoard: React.FC = () => {
             if (hexColor !== 'transparent') {
               ctx.fillStyle = hexColor;
               ctx.fillRect(
-                x * PIXEL_SIZE,
-                y * PIXEL_SIZE,
-                PIXEL_SIZE,
-                PIXEL_SIZE
+                Math.floor(x * PIXEL_SIZE * stageScale),
+                Math.floor(y * PIXEL_SIZE * stageScale),
+                Math.ceil(PIXEL_SIZE * stageScale),
+                Math.ceil(PIXEL_SIZE * stageScale)
               );
             }
           }
@@ -282,8 +285,10 @@ export const PixelBoard: React.FC = () => {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.scale(stageScale, stageScale);
-    ctx.translate(-panWorldX, -panWorldY);
+    ctx.imageSmoothingQuality = 'low';
+    const snappedPanX = Math.floor(-panWorldX * stageScale);
+    const snappedPanY = Math.floor(-panWorldY * stageScale);
+    ctx.translate(snappedPanX, snappedPanY);
 
     for (let dy = -offset; dy < size - offset; dy++) {
       for (let dx = -offset; dx < size - offset; dx++) {
@@ -306,19 +311,23 @@ export const PixelBoard: React.FC = () => {
           color: adjustedColor,
         });
 
-        // flushPendingPixels();
-        // redrawLayers();
-
-        const worldX = px * PIXEL_SIZE;
-        const worldY = py * PIXEL_SIZE;
         const hexColor = intToHex(adjustedColor);
-        const sizeWithBleed = PIXEL_SIZE;
 
-        ctx.clearRect(worldX, worldY, sizeWithBleed, sizeWithBleed);
+        ctx.clearRect(
+          Math.floor(px * PIXEL_SIZE * stageScale),
+          Math.floor(py * PIXEL_SIZE * stageScale),
+          Math.ceil(PIXEL_SIZE * stageScale),
+          Math.ceil(PIXEL_SIZE * stageScale)
+        );
 
         if (adjustedColor !== 0) {
           ctx.fillStyle = hexColor;
-          ctx.fillRect(worldX, worldY, sizeWithBleed, sizeWithBleed);
+          ctx.fillRect(
+            Math.floor(px * PIXEL_SIZE * stageScale),
+            Math.floor(py * PIXEL_SIZE * stageScale),
+            Math.ceil(PIXEL_SIZE * stageScale),
+            Math.ceil(PIXEL_SIZE * stageScale)
+          );
         }
       }
     }
@@ -498,13 +507,14 @@ export const PixelBoard: React.FC = () => {
 
     const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
     const boundedScale = Math.max(0.5, Math.min(newScale, 32));
+    const snappedScale = Math.round(boundedScale * 10) / 10;
 
     const newPanWorldX =
       panWorldX + pointer.x / oldScale - pointer.x / boundedScale;
     const newPanWorldY =
       panWorldY + pointer.y / oldScale - pointer.y / boundedScale;
 
-    setStageScale(boundedScale);
+    setStageScale(snappedScale);
     setPanWorldX(newPanWorldX);
     setPanWorldY(newPanWorldY);
   };
@@ -586,7 +596,11 @@ export const PixelBoard: React.FC = () => {
         {layers.map(
           (layer, index) =>
             layer.visible && (
-              <Layer key={layer.id} opacity={layer.opacity / 100}>
+              <Layer
+                key={layer.id}
+                opacity={layer.opacity / 100}
+                imageSmoothingEnabled={false}
+              >
                 <Image
                   ref={(node) => {
                     if (node) {
@@ -607,7 +621,11 @@ export const PixelBoard: React.FC = () => {
         {hoverPixel &&
           (currentTool === 'pencil' || currentTool === 'eraser') &&
           !layer?.locked && (
-            <Layer name="highlightLayer" listening={false}>
+            <Layer
+              name="highlightLayer"
+              listening={false}
+              imageSmoothingEnabled={false}
+            >
               {(() => {
                 const size = toolSettings[currentTool]?.size || 1;
                 const offset = Math.floor(size / 2);
@@ -639,7 +657,7 @@ export const PixelBoard: React.FC = () => {
             </Layer>
           )}
 
-        <Layer name="aiLayer">
+        <Layer name="aiLayer" imageSmoothingEnabled={false}>
           {activeGenerations.map((gen) => {
             if (!gen.area) return null;
             const { startX, startY } = gen.area;

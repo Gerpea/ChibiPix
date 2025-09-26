@@ -62,7 +62,12 @@ function drawCheckerboard(
         0
           ? '#ffffff'
           : '#cecece';
-      ctx.fillRect(canvasX, canvasY, checkerSizeScreen, checkerSizeScreen);
+      ctx.fillRect(
+        Math.floor(canvasX),
+        Math.floor(canvasY),
+        Math.ceil(checkerSizeScreen),
+        Math.ceil(checkerSizeScreen)
+      );
 
       currentWorldX += PIXEL_SIZE;
     }
@@ -114,6 +119,9 @@ export const Checkerboard = forwardRef<CheckerboardHandle, CheckerboardProps>(
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingQuality = 'low';
+
       if (canvas.width !== stageWidth || canvas.height !== stageHeight) {
         canvas.width = stageWidth;
         canvas.height = stageHeight;
@@ -126,7 +134,7 @@ export const Checkerboard = forwardRef<CheckerboardHandle, CheckerboardProps>(
 
       const startX = Math.floor(minWorldX / PIXEL_SIZE) * PIXEL_SIZE;
       const startY = Math.floor(minWorldY / PIXEL_SIZE) * PIXEL_SIZE;
-      const checkerSizeScreen = PIXEL_SIZE * stageScale;
+      const checkerSizeScreen = Math.ceil(PIXEL_SIZE * stageScale);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawCheckerboard(ctx, {

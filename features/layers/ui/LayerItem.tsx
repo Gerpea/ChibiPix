@@ -123,7 +123,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
       const adjustedX = (x - minX) * pixelSize;
       const adjustedY = (y - minY) * pixelSize;
       ctx.fillStyle = intToHex(color);
-      ctx.fillRect(adjustedX, adjustedY, pixelSize, pixelSize);
+      ctx.fillRect(adjustedX, adjustedY, pixelSize + 0.1, pixelSize + 0.1);
     }
 
     ctx.restore();

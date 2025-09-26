@@ -301,8 +301,26 @@ export const useAnimationStore = create<AnimationState>()(
         },
 
         setCurrentTime: (time) => {
-          // Implementation can remain similar to your original, but simplified
-          // as it doesn't need to manually sync layer stores.
+          set((state) => {
+            if (state.frames.length === 0) return state;
+            const totalDuration = state.frames.reduce(
+              (acc, f) => acc + f.duration,
+              0
+            );
+            const bounded = Math.max(0, Math.min(totalDuration, time));
+            let currentFrameIndex = 0;
+            let accumulated = 0;
+
+            for (let i = 0; i < state.frames.length; i++) {
+              accumulated += state.frames[i].duration;
+              if (bounded < accumulated) {
+                currentFrameIndex = i;
+                break;
+              }
+            }
+
+            return { currentTime: bounded };
+          });
         },
 
         // --- Layer Actions (Now operate on the current frame) ---

@@ -2,13 +2,9 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Stage, Layer as KonvaLayer, Image as KonvaImage } from 'react-konva';
 import Konva from 'konva';
 import { Layer } from '@/features/animation/model/animationStore';
+import { intToHex } from '@/shared/utils/colors';
 
 const MINIMAP_SIZE = 150;
-
-const intToHex = (color: number): string => {
-  if (color === 0) return 'transparent';
-  return `#${(color >>> 0).toString(16).padStart(8, '0')}`;
-};
 
 interface MinimapProps {
   layers: Layer[];
@@ -124,7 +120,7 @@ export const Minimap: React.FC<MinimapProps> = ({
       ctx.clip();
 
       // Draw pixels
-      const pixelSizeScaled = pixelSize * scale;
+      const pixelSizeScaled = pixelSize * scale + 0.1;
       layers.forEach((layer) => {
         if (!layer.visible) return;
         for (const [key, color] of layer.pixels.entries()) {
