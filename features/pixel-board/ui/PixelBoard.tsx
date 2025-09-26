@@ -16,6 +16,7 @@ import { Minimap } from './Minimap';
 import { PIXEL_SIZE } from '../const';
 import { adjustColorOpacity, hexToInt, intToHex } from '@/shared/utils/colors';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
+import { FlipFlopPixelGrid } from './FlipFlopPixelGrid';
 
 export const PixelBoard: React.FC = () => {
   const currentFrame = useAnimationStore(
@@ -45,6 +46,7 @@ export const PixelBoard: React.FC = () => {
   const stageRef = useRef<Konva.Stage | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
   const aiBorderRefs = useRef<Map<string, Konva.Rect>>(new Map());
+  const scanBarRefs = useRef<Map<string, Konva.Rect>>(new Map());
 
   const pendingPixels = useRef<
     Map<string, { x: number; y: number; color: number }[]>
@@ -198,8 +200,6 @@ export const PixelBoard: React.FC = () => {
       const { width, height } = parentRef.current.getBoundingClientRect();
       setStageWidth(width);
       setStageHeight(height);
-      // The canvas resizing is now handled in the canvas pool effect,
-      // but we still need to trigger a redraw.
       redrawLayers();
     };
 
@@ -213,11 +213,11 @@ export const PixelBoard: React.FC = () => {
       }
       observer.disconnect();
     };
-  }, [redrawLayers]); // redrawLayers is the only dependency needed now
+  }, [redrawLayers]);
 
-  // AI borders animation
   useEffect(() => {
     let anim: Konva.Animation | null = null;
+
     if (activeGenerations.length > 0) {
       const layer = stageRef.current
         ?.getLayers()
@@ -225,18 +225,42 @@ export const PixelBoard: React.FC = () => {
       if (!layer) return;
 
       anim = new Konva.Animation((frame) => {
-        if (frame) {
-          aiBorderRefs.current.forEach((rect) => {
-            rect.dashOffset(-(frame.time / 50) % 10);
+        if (!frame) return;
+        const time = frame.time / 1000; // seconds
+
+        aiBorderRefs.current.forEach((rect, id) => {
+          if (!rect) return;
+
+          // --- Pulse the border glow ---
+          const pulse = 0.6 + 0.4 * Math.sin(time * 2); // 0.6 → 1.0
+          const blur = 5 + 5 * Math.sin(time * 2); // 5 → 10
+
+          rect.setAttrs({
+            opacity: pulse,
+            shadowBlur: blur,
           });
-        }
+
+          // --- Scanning bar movement ---
+          const scanBar = scanBarRefs.current.get(id);
+          if (scanBar) {
+            const parentHeight = rect.height();
+            const scanHeight = scanBar.height();
+
+            // Smooth continuous downward motion
+            const posY =
+              ((time * 50) % (parentHeight + scanHeight)) - scanHeight;
+            scanBar.y(rect.y() + posY);
+          }
+        });
       }, layer);
+
       anim.start();
     }
+
     return () => {
       anim?.stop();
     };
-  }, [activeGenerations.length]);
+  }, [activeGenerations.length, stageRef]);
 
   const flushPendingPixels = useCallback(() => {
     pendingPixels.current.forEach((pixels, layerId) => {
@@ -661,32 +685,85 @@ export const PixelBoard: React.FC = () => {
           {activeGenerations.map((gen) => {
             if (!gen.area) return null;
             const { startX, startY } = gen.area;
-            const x = (startX * PIXEL_SIZE - panWorldX) * stageScale;
-            const y = (startY * PIXEL_SIZE - panWorldY) * stageScale;
-            const width = 16 * PIXEL_SIZE * stageScale;
-            const height = 16 * PIXEL_SIZE * stageScale;
-            const latestThought =
-              gen.thoughts[gen.thoughts.length - 1] || 'Generating...';
+            const x = Math.floor(
+              (startX * PIXEL_SIZE - panWorldX) * stageScale
+            );
+            const y = Math.floor(
+              (startY * PIXEL_SIZE - panWorldY) * stageScale
+            );
+            const width = Math.ceil(16 * PIXEL_SIZE * stageScale);
+            const height = Math.ceil(16 * PIXEL_SIZE * stageScale);
 
             return (
-              <Group key={gen.id}>
+              <Group
+                key={gen.id}
+                x={x}
+                y={y}
+                clipFunc={(ctx) => {
+                  // Clip to the rounded box shape
+                  const radius = 8;
+                  const w = width;
+                  const h = height;
+                  ctx.beginPath();
+                  ctx.moveTo(radius, 0);
+                  ctx.lineTo(w - radius, 0);
+                  ctx.quadraticCurveTo(w, 0, w, radius);
+                  ctx.lineTo(w, h - radius);
+                  ctx.quadraticCurveTo(w, h, w - radius, h);
+                  ctx.lineTo(radius, h);
+                  ctx.quadraticCurveTo(0, h, 0, h - radius);
+                  ctx.lineTo(0, radius);
+                  ctx.quadraticCurveTo(0, 0, radius, 0);
+                  ctx.closePath();
+                }}
+              >
+                <FlipFlopPixelGrid
+                  x={0}
+                  y={0}
+                  width={width}
+                  height={height}
+                  stageScale={stageScale}
+                />
                 <Rect
+                  key={gen.id}
                   ref={(node) => {
                     if (node) aiBorderRefs.current.set(gen.id, node);
                     else aiBorderRefs.current.delete(gen.id);
                   }}
-                  x={x}
-                  y={y}
+                  x={0}
+                  y={0}
                   width={width}
                   height={height}
-                  stroke="blue"
+                  stroke="#42A5F5" // Soft blue
                   strokeWidth={2}
-                  dash={[5, 5]}
-                  fill="rgba(0, 0, 255, 0.1)"
+                  strokeOpacity={0.8}
+                  cornerRadius={8}
+                  shadowColor="#42A5F5"
+                  shadowOpacity={0.7}
+                  shadowBlur={8}
+                  shadowOffset={{ x: 0, y: 0 }}
+                  fill="rgba(66, 165, 245, 0.15)" // Light transparent fill
                 />
-                <Text
-                  x={x}
-                  y={y}
+                {/* <Rect
+                  ref={(node) => {
+                    if (node) scanBarRefs.current.set(gen.id, node);
+                    else scanBarRefs.current.delete(gen.id);
+                  }}
+                  x={0}
+                  y={0}
+                  width={width}
+                  height={height / 3} // Height of scanning bar
+                  fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                  fillLinearGradientEndPoint={{ x: 0, y: height / 3 }}
+                  fillLinearGradientColorStops={[
+                    0, "rgba(66, 165, 245, 0)",
+                    0.5, "rgba(66, 165, 245, 0.5)",
+                    1, "rgba(66, 165, 245, 0)"
+                  ]}
+                /> */}
+                {/* <Text
+                  x={0}
+                  y={0}
                   width={width}
                   height={height - 30}
                   text={latestThought}
@@ -695,22 +772,40 @@ export const PixelBoard: React.FC = () => {
                   verticalAlign="middle"
                   wrap="word"
                   fill="white"
-                />
+                /> */}
                 <Group
-                  x={x + width - 30}
-                  y={y + 10}
+                  x={width - 30}
+                  y={10}
                   onClick={() => stopGeneration(gen.id)}
                   onTap={() => stopGeneration(gen.id)}
+                  onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'pointer';
+                  }}
+                  onMouseLeave={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'default';
+                  }}
                 >
-                  <Rect width={20} height={20} fill="red" cornerRadius={4} />
-                  <Text
-                    text="✕"
-                    fontSize={16}
-                    fill="white"
-                    align="center"
-                    verticalAlign="middle"
+                  {/* Button background */}
+                  <Rect
                     width={20}
                     height={20}
+                    cornerRadius={4}
+                    fill="#e53935" // Red button color
+                    shadowColor="#e53935"
+                    shadowBlur={6}
+                    shadowOpacity={0.6}
+                  />
+
+                  {/* Stop icon - small inner square */}
+                  <Rect
+                    x={6}
+                    y={6}
+                    width={8}
+                    height={8}
+                    cornerRadius={2}
+                    fill="white"
                   />
                 </Group>
               </Group>
