@@ -10,7 +10,7 @@ import { GlowingRect } from './GlowingRect';
 import { StopButton } from './StopButton';
 
 export const AiGenerationAreas: React.FC = () => {
-  const { pan, scale } = usePixelBoardStore();
+  const { pan, stage } = usePixelBoardStore();
   const { generations, stopGeneration } = useAIStore();
   const activeGenerations = useMemo(
     () =>
@@ -30,10 +30,10 @@ export const AiGenerationAreas: React.FC = () => {
       {activeGenerations.map((gen) => {
         if (!gen.area) return null;
         const { startX, startY } = gen.area;
-        const x = Math.floor((startX * PIXEL_SIZE - pan.x) * scale);
-        const y = Math.floor((startY * PIXEL_SIZE - pan.y) * scale);
-        const width = Math.ceil(16 * PIXEL_SIZE * scale);
-        const height = Math.ceil(16 * PIXEL_SIZE * scale);
+        const x = Math.floor((startX * PIXEL_SIZE - pan.x) * stage.scale);
+        const y = Math.floor((startY * PIXEL_SIZE - pan.y) * stage.scale);
+        const width = Math.ceil(16 * PIXEL_SIZE * stage.scale);
+        const height = Math.ceil(16 * PIXEL_SIZE * stage.scale);
 
         return (
           <Group
@@ -41,7 +41,6 @@ export const AiGenerationAreas: React.FC = () => {
             x={x}
             y={y}
             clipFunc={(ctx) => {
-              // Clip to the rounded box shape
               const radius = 8;
               const w = width;
               const h = height;
