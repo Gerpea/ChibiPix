@@ -3,34 +3,17 @@ import { Stage, Layer as KonvaLayer, Image as KonvaImage } from 'react-konva';
 import Konva from 'konva';
 import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
+import { usePixelBoardStore } from '../model/pixelBoardStore';
+import { PIXEL_SIZE } from '../const';
 
 const MINIMAP_SIZE = 150;
 
 interface MinimapProps {
   layers: Layer[];
-  stageWidth: number;
-  stageHeight: number;
-  stageScale: number;
-  panWorldX: number;
-  panWorldY: number;
-  worldBounds: { minX: number; minY: number; maxX: number; maxY: number };
-  setPanWorldX: (x: number) => void;
-  setPanWorldY: (y: number) => void;
-  pixelSize: number;
 }
 
-export const Minimap: React.FC<MinimapProps> = ({
-  layers,
-  stageWidth,
-  stageHeight,
-  stageScale,
-  panWorldX,
-  panWorldY,
-  worldBounds,
-  setPanWorldX,
-  setPanWorldY,
-  pixelSize,
-}) => {
+export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
+  const { pan, stage, bounds, setPan } = usePixelBoardStore();
   const minimapStageRef = useRef<Konva.Stage | null>(null);
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
@@ -69,45 +52,43 @@ export const Minimap: React.FC<MinimapProps> = ({
       }
 
       // Compute effective bounds
-      const viewWidth = stageWidth / stageScale;
-      const viewHeight = stageHeight / stageScale;
+      const viewWidth = stage.width / stage.scale;
+      const viewHeight = stage.height / stage.scale;
       const effectiveMinX = Math.min(
-        worldBounds.minX,
-        Math.floor(panWorldX / pixelSize)
+        bounds.minX,
+        Math.floor(pan.x / PIXEL_SIZE)
       );
       const effectiveMinY = Math.min(
-        worldBounds.minY,
-        Math.floor(panWorldY / pixelSize)
+        bounds.minY,
+        Math.floor(pan.y / PIXEL_SIZE)
       );
       const effectiveMaxX = Math.max(
-        worldBounds.maxX,
-        Math.ceil((panWorldX + viewWidth) / pixelSize)
+        bounds.maxX,
+        Math.ceil((pan.x + viewWidth) / PIXEL_SIZE)
       );
       const effectiveMaxY = Math.max(
-        worldBounds.maxY,
-        Math.ceil((panWorldY + viewHeight) / pixelSize)
+        bounds.maxY,
+        Math.ceil((pan.y + viewHeight) / PIXEL_SIZE)
       );
 
       const worldWidth = effectiveMaxX - effectiveMinX;
       const worldHeight = effectiveMaxY - effectiveMinY;
 
       const scale = Math.min(
-        MINIMAP_SIZE / (worldWidth * pixelSize),
-        MINIMAP_SIZE / (worldHeight * pixelSize)
+        MINIMAP_SIZE / (worldWidth * PIXEL_SIZE),
+        MINIMAP_SIZE / (worldHeight * PIXEL_SIZE)
       );
 
-      const drawnWidth = worldWidth * pixelSize * scale;
-      const drawnHeight = worldHeight * pixelSize * scale;
+      const drawnWidth = worldWidth * PIXEL_SIZE * scale;
+      const drawnHeight = worldHeight * PIXEL_SIZE * scale;
       const offsetMinimapX = (MINIMAP_SIZE - drawnWidth) / 2;
       const offsetMinimapY = (MINIMAP_SIZE - drawnHeight) / 2;
 
-      // Clear canvas
       ctx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
 
       ctx.save();
       ctx.translate(offsetMinimapX, offsetMinimapY);
 
-      // Clip with padding for stroke overflow
       const lineWidth = 2;
       const halfLineWidth = lineWidth / 2;
       ctx.beginPath();
@@ -120,15 +101,15 @@ export const Minimap: React.FC<MinimapProps> = ({
       ctx.clip();
 
       // Draw pixels
-      const pixelSizeScaled = pixelSize * scale + 0.1;
+      const pixelSizeScaled = PIXEL_SIZE * scale + 0.1;
       layers.forEach((layer) => {
         if (!layer.visible) return;
         for (const [key, color] of layer.pixels.entries()) {
           const [x, y] = key.split(',').map(Number);
           const hexColor = intToHex(color);
           if (hexColor !== 'transparent') {
-            const canvasX = (x - effectiveMinX) * pixelSize * scale;
-            const canvasY = (y - effectiveMinY) * pixelSize * scale;
+            const canvasX = (x - effectiveMinX) * PIXEL_SIZE * scale;
+            const canvasY = (y - effectiveMinY) * PIXEL_SIZE * scale;
             ctx.fillStyle = hexColor;
             ctx.fillRect(canvasX, canvasY, pixelSizeScaled, pixelSizeScaled);
           }
@@ -136,8 +117,8 @@ export const Minimap: React.FC<MinimapProps> = ({
       });
 
       // Draw viewport rectangle
-      const viewX = (panWorldX - effectiveMinX * pixelSize) * scale;
-      const viewY = (panWorldY - effectiveMinY * pixelSize) * scale;
+      const viewX = (pan.x - effectiveMinX * PIXEL_SIZE) * scale;
+      const viewY = (pan.y - effectiveMinY * PIXEL_SIZE) * scale;
       const viewWidthScaled = viewWidth * scale;
       const viewHeightScaled = viewHeight * scale;
 
@@ -151,13 +132,10 @@ export const Minimap: React.FC<MinimapProps> = ({
         Math.min(viewY, drawnHeight - viewHeightScaled)
       );
 
-      // Rounded rectangle parameters
-      const borderRadius = 6; // Adjust for more/less rounding
-
-      ctx.strokeStyle = '#6B7280'; // Tailwind gray-500 color
+      const borderRadius = 6;
+      ctx.strokeStyle = '#6B7280';
       ctx.lineWidth = lineWidth;
 
-      // Function to draw rounded rectangle
       const drawRoundedRect = (
         ctx: CanvasRenderingContext2D,
         x: number,
@@ -185,7 +163,6 @@ export const Minimap: React.FC<MinimapProps> = ({
         ctx.stroke();
       };
 
-      // Draw the rounded rectangle
       drawRoundedRect(
         ctx,
         clampedViewX,
@@ -207,86 +184,72 @@ export const Minimap: React.FC<MinimapProps> = ({
 
       redrawRequested.current = false;
     });
-  }, [
-    layers,
-    stageWidth,
-    stageHeight,
-    stageScale,
-    panWorldX,
-    panWorldY,
-    worldBounds,
-    pixelSize,
-  ]);
+  }, [layers, stage, pan, bounds]);
 
-  // Redraw on changes
   useEffect(() => {
     if (isCanvasReady) {
       redrawMinimap();
     }
   }, [redrawMinimap, isCanvasReady]);
 
-  // Handle minimap drag
   const handleMinimapDrag = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (!isDragging.current) return;
       const pos = minimapStageRef.current?.getPointerPosition();
       if (!pos) return;
 
-      const viewWidth = stageWidth / stageScale;
-      const viewHeight = stageHeight / stageScale;
+      const viewWidth = stage.width / stage.scale;
+      const viewHeight = stage.height / stage.scale;
       const effectiveMinX = Math.min(
-        worldBounds.minX,
-        Math.floor(panWorldX / pixelSize)
+        bounds.minX,
+        Math.floor(pan.x / PIXEL_SIZE)
       );
       const effectiveMinY = Math.min(
-        worldBounds.minY,
-        Math.floor(panWorldY / pixelSize)
+        bounds.minY,
+        Math.floor(pan.y / PIXEL_SIZE)
       );
       const effectiveMaxX = Math.max(
-        worldBounds.maxX,
-        Math.ceil((panWorldX + viewWidth) / pixelSize)
+        bounds.maxX,
+        Math.ceil((pan.x + viewWidth) / PIXEL_SIZE)
       );
       const effectiveMaxY = Math.max(
-        worldBounds.maxY,
-        Math.ceil((panWorldY + viewHeight) / pixelSize)
+        bounds.maxY,
+        Math.ceil((pan.y + viewHeight) / PIXEL_SIZE)
       );
 
       const worldWidth = effectiveMaxX - effectiveMinX;
       const worldHeight = effectiveMaxY - effectiveMinY;
 
       const scale = Math.min(
-        MINIMAP_SIZE / (worldWidth * pixelSize),
-        MINIMAP_SIZE / (worldHeight * pixelSize)
+        MINIMAP_SIZE / (worldWidth * PIXEL_SIZE),
+        MINIMAP_SIZE / (worldHeight * PIXEL_SIZE)
       );
 
-      const drawnWidth = worldWidth * pixelSize * scale;
-      const drawnHeight = worldHeight * pixelSize * scale;
+      const drawnWidth = worldWidth * PIXEL_SIZE * scale;
+      const drawnHeight = worldHeight * PIXEL_SIZE * scale;
       const offsetMinimapX = (MINIMAP_SIZE - drawnWidth) / 2;
       const offsetMinimapY = (MINIMAP_SIZE - drawnHeight) / 2;
 
       const worldX =
-        (pos.x - offsetMinimapX) / scale + effectiveMinX * pixelSize;
+        (pos.x - offsetMinimapX) / scale + effectiveMinX * PIXEL_SIZE;
       const worldY =
-        (pos.y - offsetMinimapY) / scale + effectiveMinY * pixelSize;
+        (pos.y - offsetMinimapY) / scale + effectiveMinY * PIXEL_SIZE;
 
       const newPanX = worldX - viewWidth / 2;
       const newPanY = worldY - viewHeight / 2;
 
-      setPanWorldX(newPanX);
-      setPanWorldY(newPanY);
+      setPan({ x: newPanX, y: newPanY });
     },
-    [
-      worldBounds,
-      stageWidth,
-      stageHeight,
-      stageScale,
-      panWorldX,
-      panWorldY,
-      pixelSize,
-      setPanWorldX,
-      setPanWorldY,
-    ]
+    [bounds, stage, pan, setPan]
   );
+
+  useEffect(() => {
+    function handleMouseUp() {
+      isDragging.current = false;
+    }
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -295,15 +258,6 @@ export const Minimap: React.FC<MinimapProps> = ({
     },
     [handleMinimapDrag]
   );
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [handleMouseUp]);
 
   if (!isCanvasReady || !minimapCanvasRef.current) {
     return null;

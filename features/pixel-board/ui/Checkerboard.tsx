@@ -8,6 +8,7 @@ import React, {
 import { Image, Layer } from 'react-konva';
 import Konva from 'konva';
 import { PIXEL_SIZE } from '../const';
+import { usePixelBoardStore } from '../model/pixelBoardStore';
 
 type DrawCheckboardOptions = {
   startY: number;
@@ -75,112 +76,101 @@ function drawCheckerboard(
   }
 }
 
-type CheckerboardProps = {
-  stageWidth: number;
-  stageHeight: number;
-  panWorldX: number;
-  panWorldY: number;
-  stageScale: number;
-};
-
 export type CheckerboardHandle = {
   redraw: () => void;
 };
 
-export const Checkerboard = forwardRef<CheckerboardHandle, CheckerboardProps>(
-  ({ stageWidth, stageHeight, panWorldX, panWorldY, stageScale }, ref) => {
-    const canvasRef = useRef<HTMLCanvasElement>(
-      document.createElement('canvas')
-    );
-    const imageRef = useRef<Konva.Image | null>(null);
+export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
+  const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const imageRef = useRef<Konva.Image | null>(null);
+  const { stage, pan } = usePixelBoardStore();
 
-    const propsRef = useRef({
-      stageWidth,
+  const propsRef = useRef({
+    stageWidth: stage.width,
+    stageHeight: stage.height,
+    panWorldX: pan.x,
+    panWorldY: pan.y,
+    stageScale: stage.scale,
+  });
+  useEffect(() => {
+    propsRef.current = {
+      stageWidth: stage.width,
+      stageHeight: stage.height,
+      panWorldX: pan.x,
+      panWorldY: pan.y,
+      stageScale: stage.scale,
+    };
+  }, [stage, pan]);
+
+  const redraw = useCallback(() => {
+    const { stageWidth, stageHeight, panWorldX, panWorldY, stageScale } =
+      propsRef.current;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = 'low';
+
+    if (canvas.width !== stageWidth || canvas.height !== stageHeight) {
+      canvas.width = stageWidth;
+      canvas.height = stageHeight;
+    }
+
+    const minWorldX = panWorldX;
+    const minWorldY = panWorldY;
+    const maxWorldX = minWorldX + stageWidth / stageScale;
+    const maxWorldY = minWorldY + stageHeight / stageScale;
+
+    const startX = Math.floor(minWorldX / PIXEL_SIZE) * PIXEL_SIZE;
+    const startY = Math.floor(minWorldY / PIXEL_SIZE) * PIXEL_SIZE;
+    const checkerSizeScreen = Math.ceil(PIXEL_SIZE * stageScale);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawCheckerboard(ctx, {
+      checkerSizeScreen,
+      maxWorldX,
+      maxWorldY,
+      minWorldX,
+      minWorldY,
       stageHeight,
-      panWorldX,
-      panWorldY,
       stageScale,
-    });
-    useEffect(() => {
-      propsRef.current = {
-        stageWidth,
-        stageHeight,
-        panWorldX,
-        panWorldY,
-        stageScale,
-      };
+      stageWidth,
+      startX,
+      startY,
     });
 
-    const redraw = useCallback(() => {
-      const { stageWidth, stageHeight, panWorldX, panWorldY, stageScale } =
-        propsRef.current;
+    if (imageRef.current) {
+      imageRef.current.image(canvas);
+      imageRef.current.getLayer()?.batchDraw();
+    }
+  }, []);
 
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+  useImperativeHandle(
+    ref,
+    () => ({
+      redraw: redraw,
+    }),
+    [redraw]
+  );
 
-      ctx.imageSmoothingEnabled = false;
-      ctx.imageSmoothingQuality = 'low';
+  useEffect(() => {
+    redraw();
+  }, [redraw]);
 
-      if (canvas.width !== stageWidth || canvas.height !== stageHeight) {
-        canvas.width = stageWidth;
-        canvas.height = stageHeight;
-      }
-
-      const minWorldX = panWorldX;
-      const minWorldY = panWorldY;
-      const maxWorldX = minWorldX + stageWidth / stageScale;
-      const maxWorldY = minWorldY + stageHeight / stageScale;
-
-      const startX = Math.floor(minWorldX / PIXEL_SIZE) * PIXEL_SIZE;
-      const startY = Math.floor(minWorldY / PIXEL_SIZE) * PIXEL_SIZE;
-      const checkerSizeScreen = Math.ceil(PIXEL_SIZE * stageScale);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawCheckerboard(ctx, {
-        checkerSizeScreen,
-        maxWorldX,
-        maxWorldY,
-        minWorldX,
-        minWorldY,
-        stageHeight,
-        stageScale,
-        stageWidth,
-        startX,
-        startY,
-      });
-
-      if (imageRef.current) {
-        imageRef.current.image(canvas);
-        imageRef.current.getLayer()?.batchDraw();
-      }
-    }, []);
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        redraw: redraw,
-      }),
-      [redraw]
-    );
-
-    useEffect(() => {
-      redraw();
-    }, [redraw]);
-
-    return (
-      <Layer listening={false}>
-        <Image
-          ref={imageRef}
-          image={canvasRef.current}
-          width={stageWidth}
-          height={stageHeight}
-          x={0}
-          y={0}
-        />
-      </Layer>
-    );
-  }
-);
+  return (
+    <Layer listening={false}>
+      <Image
+        ref={imageRef}
+        image={canvasRef.current}
+        width={stage.width}
+        height={stage.height}
+        x={0}
+        y={0}
+      />
+    </Layer>
+  );
+});
 
 Checkerboard.displayName = 'Checkerboard';

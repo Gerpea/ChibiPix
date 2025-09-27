@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import Konva from 'konva';
 import { Image, Group } from 'react-konva';
-import { PIXEL_SIZE } from '../const';
+import { PIXEL_SIZE } from '../../const';
+import { usePixelBoardStore } from '../../model/pixelBoardStore';
 
 interface FlipFlopPixelGridProps {
   x: number;
   y: number;
   width: number;
   height: number;
-  stageScale: number;
 }
 
 export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
@@ -16,13 +16,13 @@ export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
   y,
   width,
   height,
-  stageScale,
 }) => {
+  const { scale } = usePixelBoardStore();
   const imageRef = useRef<Konva.Image>(null);
 
   // Calculate the number of pixels based on scaled dimensions
-  const cols = Math.max(1, Math.ceil(width / (PIXEL_SIZE * stageScale)));
-  const rows = Math.max(1, Math.ceil(height / (PIXEL_SIZE * stageScale)));
+  const cols = Math.max(1, Math.ceil(width / (PIXEL_SIZE * scale)));
+  const rows = Math.max(1, Math.ceil(height / (PIXEL_SIZE * scale)));
   const total = cols * rows;
 
   // Create off-screen canvas with scaled dimensions
@@ -84,20 +84,19 @@ export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
     return () => {
       anim.stop();
     };
-  }, [cols, rows, total, offscreenCanvas, stageScale]);
+  }, [cols, rows, total, offscreenCanvas, scale]);
 
-  // Render the Image node with scaling
   return (
     <Group x={x} y={y}>
       <Image
         ref={imageRef}
         x={0}
         y={0}
-        width={width / stageScale}
-        height={height / stageScale}
+        width={width / scale}
+        height={height / scale}
         imageSmoothingEnabled={false}
-        scaleX={stageScale}
-        scaleY={stageScale}
+        scaleX={scale}
+        scaleY={scale}
       />
     </Group>
   );

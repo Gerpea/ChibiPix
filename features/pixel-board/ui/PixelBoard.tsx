@@ -1,22 +1,17 @@
 'use client';
 
-import React, {
-  useRef,
-  useMemo,
-  useEffect,
-  useState,
-  useCallback,
-} from 'react';
-import { Stage, Layer, Image, Rect, Text, Group } from 'react-konva';
+import React, { useRef, useMemo, useEffect, useCallback } from 'react';
+import { Stage, Layer, Image, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
-import { useAIStore } from '@/features/ai-generation/models/aiStore';
 import { Checkerboard, CheckerboardHandle } from './Checkerboard';
 import { Minimap } from './Minimap';
 import { PIXEL_SIZE } from '../const';
 import { adjustColorOpacity, hexToInt, intToHex } from '@/shared/utils/colors';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
-import { FlipFlopPixelGrid } from './FlipFlopPixelGrid';
+import { AiGenerationAreas } from './AiGenerationAreas/AiGenerationArea';
+import { usePixelBoardStore } from '../model/pixelBoardStore';
+import { HighlightPixel } from './HighlightPixel';
 
 export const PixelBoard: React.FC = () => {
   const currentFrame = useAnimationStore(
@@ -26,13 +21,6 @@ export const PixelBoard: React.FC = () => {
 
   const { primaryColor, secondaryColor, currentTool, toolSettings } =
     useToolbarStore();
-  const { generations, stopGeneration } = useAIStore();
-
-  const [stageWidth, setStageWidth] = useState(32);
-  const [stageHeight, setStageHeight] = useState(32);
-  const [stageScale, setStageScale] = useState(1);
-  const [panWorldX, setPanWorldX] = useState(0);
-  const [panWorldY, setPanWorldY] = useState(0);
 
   const pointerColor = useRef(hexToInt(primaryColor));
   const isDrawing = useRef(false);
@@ -45,30 +33,21 @@ export const PixelBoard: React.FC = () => {
   const imageRefs = useRef<Konva.Image[]>([]);
   const stageRef = useRef<Konva.Stage | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
-  const aiBorderRefs = useRef<Map<string, Konva.Rect>>(new Map());
-  const scanBarRefs = useRef<Map<string, Konva.Rect>>(new Map());
 
   const pendingPixels = useRef<
     Map<string, { x: number; y: number; color: number }[]>
   >(new Map());
 
-  const [worldBounds, setWorldBounds] = useState({
-    minX: 0,
-    minY: 0,
-    maxX: 32,
-    maxY: 32,
-  });
-
-  const [hoverPixel, setHoverPixel] = useState<{
-    row: number;
-    col: number;
-  } | null>(null);
-
-  const activeGenerations = useMemo(
-    () =>
-      Object.values(generations).filter((gen) => gen.isGenerating && gen.area),
-    [generations]
-  );
+  const {
+    bounds,
+    hoverPixel,
+    stage,
+    pan,
+    setBounds,
+    setHoverPixel,
+    setStage,
+    setPan,
+  } = usePixelBoardStore();
 
   const layers = currentFrame?.layers ?? [];
   const activeLayerId = currentFrame?.activeLayerId ?? null;
@@ -101,7 +80,7 @@ export const PixelBoard: React.FC = () => {
       maxX = 32;
       maxY = 32;
     }
-    setWorldBounds({ minX, minY, maxX, maxY });
+    setBounds({ minX, minY, maxX, maxY });
   }, [layers]);
 
   useEffect(() => {
@@ -115,12 +94,12 @@ export const PixelBoard: React.FC = () => {
         canvas = document.createElement('canvas');
         canvasRefs.current[i] = canvas;
       }
-      if (canvas.width !== stageWidth || canvas.height !== stageHeight) {
-        canvas.width = stageWidth;
-        canvas.height = stageHeight;
+      if (canvas.width !== stage.width || canvas.height !== stage.height) {
+        canvas.width = stage.width;
+        canvas.height = stage.height;
       }
     }
-  }, [layers.length, stageWidth, stageHeight]);
+  }, [layers.length, stage.width, stage.height]);
 
   useEffect(() => {
     pointerColor.current = hexToInt(primaryColor);
@@ -130,13 +109,13 @@ export const PixelBoard: React.FC = () => {
     checkerboardRef.current?.redraw();
     if (!stageRef.current) return;
 
-    const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
-    const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
+    const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
+    const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
     const maxPixelX = Math.ceil(
-      (panWorldX + stageWidth / stageScale) / PIXEL_SIZE
+      (pan.x + stage.width / stage.scale) / PIXEL_SIZE
     );
     const maxPixelY = Math.ceil(
-      (panWorldY + stageHeight / stageScale) / PIXEL_SIZE
+      (pan.y + stage.height / stage.scale) / PIXEL_SIZE
     );
 
     layers.forEach((layer, index) => {
@@ -152,8 +131,8 @@ export const PixelBoard: React.FC = () => {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.imageSmoothingQuality = 'low';
-        const snappedPanX = Math.floor(-panWorldX * stageScale);
-        const snappedPanY = Math.floor(-panWorldY * stageScale);
+        const snappedPanX = Math.floor(-pan.x * stage.scale);
+        const snappedPanY = Math.floor(-pan.y * stage.scale);
         ctx.translate(snappedPanX, snappedPanY);
 
         for (const [key, color] of layer.pixels.entries()) {
@@ -168,10 +147,10 @@ export const PixelBoard: React.FC = () => {
             if (hexColor !== 'transparent') {
               ctx.fillStyle = hexColor;
               ctx.fillRect(
-                Math.floor(x * PIXEL_SIZE * stageScale),
-                Math.floor(y * PIXEL_SIZE * stageScale),
-                Math.ceil(PIXEL_SIZE * stageScale),
-                Math.ceil(PIXEL_SIZE * stageScale)
+                Math.floor(x * PIXEL_SIZE * stage.scale),
+                Math.floor(y * PIXEL_SIZE * stage.scale),
+                Math.ceil(PIXEL_SIZE * stage.scale),
+                Math.ceil(PIXEL_SIZE * stage.scale)
               );
             }
           }
@@ -186,9 +165,8 @@ export const PixelBoard: React.FC = () => {
     });
 
     stageRef.current.batchDraw();
-  }, [layers, stageWidth, stageHeight, panWorldX, panWorldY, stageScale]);
+  }, [layers, stage.width, stage.height, pan.x, pan.y, stage.scale]);
 
-  // FIX: Add useEffect to trigger redraw whenever layers or transform changes.
   useEffect(() => {
     redrawLayers();
   }, [redrawLayers]);
@@ -198,9 +176,7 @@ export const PixelBoard: React.FC = () => {
     const updateSize = () => {
       if (!parentRef.current) return;
       const { width, height } = parentRef.current.getBoundingClientRect();
-      setStageWidth(width);
-      setStageHeight(height);
-      redrawLayers();
+      setStage({ width, height });
     };
 
     const observer = new ResizeObserver(updateSize);
@@ -214,53 +190,6 @@ export const PixelBoard: React.FC = () => {
       observer.disconnect();
     };
   }, [redrawLayers]);
-
-  useEffect(() => {
-    let anim: Konva.Animation | null = null;
-
-    if (activeGenerations.length > 0) {
-      const layer = stageRef.current
-        ?.getLayers()
-        .find((l) => l.hasName('aiLayer'));
-      if (!layer) return;
-
-      anim = new Konva.Animation((frame) => {
-        if (!frame) return;
-        const time = frame.time / 1000; // seconds
-
-        aiBorderRefs.current.forEach((rect, id) => {
-          if (!rect) return;
-
-          // --- Pulse the border glow ---
-          const pulse = 0.6 + 0.4 * Math.sin(time * 2); // 0.6 → 1.0
-          const blur = 5 + 5 * Math.sin(time * 2); // 5 → 10
-
-          rect.setAttrs({
-            opacity: pulse,
-            shadowBlur: blur,
-          });
-
-          // --- Scanning bar movement ---
-          const scanBar = scanBarRefs.current.get(id);
-          if (scanBar) {
-            const parentHeight = rect.height();
-            const scanHeight = scanBar.height();
-
-            // Smooth continuous downward motion
-            const posY =
-              ((time * 50) % (parentHeight + scanHeight)) - scanHeight;
-            scanBar.y(rect.y() + posY);
-          }
-        });
-      }, layer);
-
-      anim.start();
-    }
-
-    return () => {
-      anim?.stop();
-    };
-  }, [activeGenerations.length, stageRef]);
 
   const flushPendingPixels = useCallback(() => {
     pendingPixels.current.forEach((pixels, layerId) => {
@@ -310,8 +239,8 @@ export const PixelBoard: React.FC = () => {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.imageSmoothingQuality = 'low';
-    const snappedPanX = Math.floor(-panWorldX * stageScale);
-    const snappedPanY = Math.floor(-panWorldY * stageScale);
+    const snappedPanX = Math.floor(-pan.x * stage.scale);
+    const snappedPanY = Math.floor(-pan.y * stage.scale);
     ctx.translate(snappedPanX, snappedPanY);
 
     for (let dy = -offset; dy < size - offset; dy++) {
@@ -338,19 +267,19 @@ export const PixelBoard: React.FC = () => {
         const hexColor = intToHex(adjustedColor);
 
         ctx.clearRect(
-          Math.floor(px * PIXEL_SIZE * stageScale),
-          Math.floor(py * PIXEL_SIZE * stageScale),
-          Math.ceil(PIXEL_SIZE * stageScale),
-          Math.ceil(PIXEL_SIZE * stageScale)
+          Math.floor(px * PIXEL_SIZE * stage.scale),
+          Math.floor(py * PIXEL_SIZE * stage.scale),
+          Math.ceil(PIXEL_SIZE * stage.scale),
+          Math.ceil(PIXEL_SIZE * stage.scale)
         );
 
         if (adjustedColor !== 0) {
           ctx.fillStyle = hexColor;
           ctx.fillRect(
-            Math.floor(px * PIXEL_SIZE * stageScale),
-            Math.floor(py * PIXEL_SIZE * stageScale),
-            Math.ceil(PIXEL_SIZE * stageScale),
-            Math.ceil(PIXEL_SIZE * stageScale)
+            Math.floor(px * PIXEL_SIZE * stage.scale),
+            Math.floor(py * PIXEL_SIZE * stage.scale),
+            Math.ceil(PIXEL_SIZE * stage.scale),
+            Math.ceil(PIXEL_SIZE * stage.scale)
           );
         }
       }
@@ -376,13 +305,13 @@ export const PixelBoard: React.FC = () => {
     const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
     if (targetColor === color) return;
 
-    const minPixelX = Math.floor(panWorldX / PIXEL_SIZE);
-    const minPixelY = Math.floor(panWorldY / PIXEL_SIZE);
+    const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
+    const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
     const maxPixelX = Math.ceil(
-      (panWorldX + stageWidth / stageScale) / PIXEL_SIZE
+      (pan.x + stage.width / stage.scale) / PIXEL_SIZE
     );
     const maxPixelY = Math.ceil(
-      (panWorldY + stageHeight / stageScale) / PIXEL_SIZE
+      (pan.y + stage.height / stage.scale) / PIXEL_SIZE
     );
 
     const newPixels: { x: number; y: number; color: number }[] = [];
@@ -434,8 +363,8 @@ export const PixelBoard: React.FC = () => {
   const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const pos = e.target.getStage()?.getPointerPosition();
     if (!pos) return null;
-    const worldX = pos.x / stageScale + panWorldX;
-    const worldY = pos.y / stageScale + panWorldY;
+    const worldX = pos.x / stage.scale + pan.x;
+    const worldY = pos.y / stage.scale + pan.y;
     const col = Math.floor(worldX / PIXEL_SIZE);
     const row = Math.floor(worldY / PIXEL_SIZE);
     return { row, col };
@@ -446,23 +375,22 @@ export const PixelBoard: React.FC = () => {
     if (currentTool === 'pencil') {
       drawPixel(row, col, pointerColor.current);
     } else if (currentTool === 'eraser') {
-      drawPixel(row, col, 0); // Color 0 is transparent
+      drawPixel(row, col, 0);
     } else if (currentTool === 'fill') {
       fillPixels(row, col, pointerColor.current);
     }
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const stage = stageRef.current;
-    if (!stage) return;
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
 
     if (isPanning.current && currentTool === 'pan' && lastPanPos.current) {
-      const currentPos = stage.getPointerPosition();
+      const currentPos = stageEl.getPointerPosition();
       if (currentPos) {
-        const dx = (currentPos.x - lastPanPos.current.x) / stageScale;
-        const dy = (currentPos.y - lastPanPos.current.y) / stageScale;
-        setPanWorldX((prev) => prev - dx);
-        setPanWorldY((prev) => prev - dy);
+        const dx = (currentPos.x - lastPanPos.current.x) / stage.scale;
+        const dy = (currentPos.y - lastPanPos.current.y) / stage.scale;
+        setPan({ x: pan.x - dx, y: pan.y - dy });
         lastPanPos.current = currentPos;
       }
       return;
@@ -472,7 +400,7 @@ export const PixelBoard: React.FC = () => {
     if (pos && (currentTool === 'pencil' || currentTool === 'eraser')) {
       setHoverPixel(pos);
     } else {
-      setHoverPixel(null);
+      setHoverPixel(undefined);
     }
 
     if (
@@ -485,12 +413,11 @@ export const PixelBoard: React.FC = () => {
   };
 
   const handleMouseLeave = () => {
-    setHoverPixel(null);
+    setHoverPixel(undefined);
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.evt.button === 1 || currentTool === 'pan') {
-      // Middle mouse button pan
       isPanning.current = true;
       lastPanPos.current = stageRef.current?.getPointerPosition() || null;
       e.evt.preventDefault();
@@ -521,12 +448,12 @@ export const PixelBoard: React.FC = () => {
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
-    const stage = stageRef.current;
-    if (!stage) return;
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
 
     const scaleBy = 1.1;
-    const oldScale = stageScale;
-    const pointer = stage.getPointerPosition();
+    const oldScale = stage.scale;
+    const pointer = stageEl.getPointerPosition();
     if (!pointer) return;
 
     const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
@@ -534,13 +461,12 @@ export const PixelBoard: React.FC = () => {
     const snappedScale = Math.round(boundedScale * 10) / 10;
 
     const newPanWorldX =
-      panWorldX + pointer.x / oldScale - pointer.x / boundedScale;
+      pan.x + pointer.x / oldScale - pointer.x / boundedScale;
     const newPanWorldY =
-      panWorldY + pointer.y / oldScale - pointer.y / boundedScale;
+      pan.y + pointer.y / oldScale - pointer.y / boundedScale;
 
-    setStageScale(snappedScale);
-    setPanWorldX(newPanWorldX);
-    setPanWorldY(newPanWorldY);
+    setStage({ scale: snappedScale });
+    setPan({ x: newPanWorldX, y: newPanWorldY });
   };
 
   const getCursor = () => {
@@ -598,8 +524,8 @@ export const PixelBoard: React.FC = () => {
     >
       <Stage
         ref={stageRef}
-        width={stageWidth}
-        height={stageHeight}
+        width={stage.width}
+        height={stage.height}
         style={stageStyle}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -608,14 +534,7 @@ export const PixelBoard: React.FC = () => {
         onContextMenu={handleContextMenu}
         onWheel={handleWheel}
       >
-        <Checkerboard
-          stageWidth={stageWidth}
-          stageHeight={stageHeight}
-          panWorldX={panWorldX}
-          panWorldY={panWorldY}
-          stageScale={stageScale}
-          ref={checkerboardRef}
-        />
+        <Checkerboard ref={checkerboardRef} />
 
         {layers.map(
           (layer, index) =>
@@ -632,8 +551,8 @@ export const PixelBoard: React.FC = () => {
                     }
                   }}
                   image={canvasRefs.current[index]}
-                  width={stageWidth}
-                  height={stageHeight}
+                  width={stage.width}
+                  height={stage.height}
                   x={0}
                   y={0}
                   listening={false}
@@ -642,189 +561,10 @@ export const PixelBoard: React.FC = () => {
             )
         )}
 
-        {hoverPixel &&
-          (currentTool === 'pencil' || currentTool === 'eraser') &&
-          !layer?.locked && (
-            <Layer
-              name="highlightLayer"
-              listening={false}
-              imageSmoothingEnabled={false}
-            >
-              {(() => {
-                const size = toolSettings[currentTool]?.size || 1;
-                const offset = Math.floor(size / 2);
-                const highlightRects = [];
-                for (let dy = -offset; dy < size - offset; dy++) {
-                  for (let dx = -offset; dx < size - offset; dx++) {
-                    const x =
-                      ((hoverPixel.col + dx) * PIXEL_SIZE - panWorldX) *
-                      stageScale;
-                    const y =
-                      ((hoverPixel.row + dy) * PIXEL_SIZE - panWorldY) *
-                      stageScale;
-                    highlightRects.push(
-                      <Rect
-                        key={`${dx},${dy}`}
-                        x={x}
-                        y={y}
-                        width={PIXEL_SIZE * stageScale}
-                        height={PIXEL_SIZE * stageScale}
-                        fill="rgba(255, 255, 255, 0.3)"
-                        stroke="rgba(0, 0, 0, 0.5)"
-                        strokeWidth={1}
-                      />
-                    );
-                  }
-                }
-                return highlightRects;
-              })()}
-            </Layer>
-          )}
-
-        <Layer name="aiLayer" imageSmoothingEnabled={false}>
-          {activeGenerations.map((gen) => {
-            if (!gen.area) return null;
-            const { startX, startY } = gen.area;
-            const x = Math.floor(
-              (startX * PIXEL_SIZE - panWorldX) * stageScale
-            );
-            const y = Math.floor(
-              (startY * PIXEL_SIZE - panWorldY) * stageScale
-            );
-            const width = Math.ceil(16 * PIXEL_SIZE * stageScale);
-            const height = Math.ceil(16 * PIXEL_SIZE * stageScale);
-
-            return (
-              <Group
-                key={gen.id}
-                x={x}
-                y={y}
-                clipFunc={(ctx) => {
-                  // Clip to the rounded box shape
-                  const radius = 8;
-                  const w = width;
-                  const h = height;
-                  ctx.beginPath();
-                  ctx.moveTo(radius, 0);
-                  ctx.lineTo(w - radius, 0);
-                  ctx.quadraticCurveTo(w, 0, w, radius);
-                  ctx.lineTo(w, h - radius);
-                  ctx.quadraticCurveTo(w, h, w - radius, h);
-                  ctx.lineTo(radius, h);
-                  ctx.quadraticCurveTo(0, h, 0, h - radius);
-                  ctx.lineTo(0, radius);
-                  ctx.quadraticCurveTo(0, 0, radius, 0);
-                  ctx.closePath();
-                }}
-              >
-                <FlipFlopPixelGrid
-                  x={0}
-                  y={0}
-                  width={width}
-                  height={height}
-                  stageScale={stageScale}
-                />
-                <Rect
-                  key={gen.id}
-                  ref={(node) => {
-                    if (node) aiBorderRefs.current.set(gen.id, node);
-                    else aiBorderRefs.current.delete(gen.id);
-                  }}
-                  x={0}
-                  y={0}
-                  width={width}
-                  height={height}
-                  stroke="#42A5F5" // Soft blue
-                  strokeWidth={2}
-                  strokeOpacity={0.8}
-                  cornerRadius={8}
-                  shadowColor="#42A5F5"
-                  shadowOpacity={0.7}
-                  shadowBlur={8}
-                  shadowOffset={{ x: 0, y: 0 }}
-                  fill="rgba(66, 165, 245, 0.15)" // Light transparent fill
-                />
-                {/* <Rect
-                  ref={(node) => {
-                    if (node) scanBarRefs.current.set(gen.id, node);
-                    else scanBarRefs.current.delete(gen.id);
-                  }}
-                  x={0}
-                  y={0}
-                  width={width}
-                  height={height / 3} // Height of scanning bar
-                  fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-                  fillLinearGradientEndPoint={{ x: 0, y: height / 3 }}
-                  fillLinearGradientColorStops={[
-                    0, "rgba(66, 165, 245, 0)",
-                    0.5, "rgba(66, 165, 245, 0.5)",
-                    1, "rgba(66, 165, 245, 0)"
-                  ]}
-                /> */}
-                {/* <Text
-                  x={0}
-                  y={0}
-                  width={width}
-                  height={height - 30}
-                  text={latestThought}
-                  fontSize={16}
-                  align="center"
-                  verticalAlign="middle"
-                  wrap="word"
-                  fill="white"
-                /> */}
-                <Group
-                  x={width - 30}
-                  y={10}
-                  onClick={() => stopGeneration(gen.id)}
-                  onTap={() => stopGeneration(gen.id)}
-                  onMouseEnter={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'pointer';
-                  }}
-                  onMouseLeave={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'default';
-                  }}
-                >
-                  {/* Button background */}
-                  <Rect
-                    width={20}
-                    height={20}
-                    cornerRadius={4}
-                    fill="#e53935" // Red button color
-                    shadowColor="#e53935"
-                    shadowBlur={6}
-                    shadowOpacity={0.6}
-                  />
-
-                  {/* Stop icon - small inner square */}
-                  <Rect
-                    x={6}
-                    y={6}
-                    width={8}
-                    height={8}
-                    cornerRadius={2}
-                    fill="white"
-                  />
-                </Group>
-              </Group>
-            );
-          })}
-        </Layer>
+        <AiGenerationAreas />
+        <HighlightPixel />
       </Stage>
-      <Minimap
-        layers={layers}
-        stageWidth={stageWidth}
-        stageHeight={stageHeight}
-        stageScale={stageScale}
-        panWorldX={panWorldX}
-        panWorldY={panWorldY}
-        worldBounds={worldBounds}
-        setPanWorldX={setPanWorldX}
-        setPanWorldY={setPanWorldY}
-        pixelSize={PIXEL_SIZE}
-      />
+      <Minimap layers={layers} />
     </div>
   );
 };
