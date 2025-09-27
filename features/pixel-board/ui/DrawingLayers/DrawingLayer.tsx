@@ -61,13 +61,8 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
     const layers = useMemo(() => currentFrame?.layers ?? [], [currentFrame]);
     const layer = useMemo(() => layers.find((l) => l.id === id), [layers, id]);
 
-    const flushPendingPixels = useCallback(() => {
-      setLayerPixels(id, pendingPixels.current);
-      pendingPixels.current = [];
-    }, [id, setLayerPixels]);
-
-    useEffect(() => {
-      if (!(layer && layer.visible)) return;
+    const redraw = useCallback(() => {
+      if (!layer?.visible) return;
 
       const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
       const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
@@ -82,7 +77,6 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -120,7 +114,13 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
         imageNode.image(canvas);
       }
       imageNode?.getStage()?.batchDraw();
-    }, [layer, stage, pan]);
+    }, [stage, pan, layer]);
+
+    useEffect(() => redraw(), [redraw]);
+    const flushPendingPixels = useCallback(() => {
+      setLayerPixels(id, pendingPixels.current);
+      pendingPixels.current = [];
+    }, [id, setLayerPixels]);
 
     const drawPixel = useCallback(
       (row: number, col: number, color: number) => {
@@ -254,7 +254,8 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
         canvas.width = stage.width;
         canvas.height = stage.height;
       }
-    }, [id, stage.width, stage.height]);
+      redraw();
+    }, [id, stage.width, stage.height, currentFrame]);
 
     useImperativeHandle(
       ref,

@@ -10,21 +10,10 @@ import { usePixelBoardStore } from '../model/pixelBoardStore';
 export const HighlightPixel: React.FC = () => {
   const { hoverPixel, pan, stage } = usePixelBoardStore();
   const { currentTool, toolSettings } = useToolbarStore();
-  const currentFrame = useAnimationStore(
-    (state) => state.frames[state.currentFrameIndex]
-  );
-  const layers = currentFrame?.layers ?? [];
-  const activeLayerId = currentFrame?.activeLayerId ?? null;
-
-  const layer = useMemo(
-    () => layers.find((l) => l.id === activeLayerId),
-    [layers, activeLayerId]
-  );
 
   return (
     hoverPixel &&
-    (currentTool === 'pencil' || currentTool === 'eraser') &&
-    !layer?.locked && (
+    (currentTool === 'pencil' || currentTool === 'eraser') && (
       <Layer
         name="highlightLayer"
         listening={false}
