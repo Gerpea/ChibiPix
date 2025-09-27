@@ -1,103 +1,94 @@
 'use client';
 
+import React, { useCallback, useRef } from 'react';
+import { Layer } from 'react-konva';
 import Konva from 'konva';
-import React, { useCallback, useEffect } from 'react';
-import { Group, Image, Layer, Rect } from 'react-konva';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
+import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
+import { hexToInt } from '@/shared/utils/colors';
+import { usePixelBoardStore } from '../../model/pixelBoardStore';
+import { DrawingLayer, DrawingLayerHandle } from './DrawingLayer';
+import { getPointerPos } from '../../utils';
 
-interface StopButtonProps {
-  width: number;
-  onStop: () => void;
-}
+export const DrawingLayers: React.FC = () => {
+  const currentFrame = useAnimationStore(
+    (state) => state.frames[state.currentFrameIndex]
+  );
+  const { currentTool, primaryColor, secondaryColor } = useToolbarStore();
+  const { stage, pan } = usePixelBoardStore();
 
-export const StopButton: React.FC<StopButtonProps> = ({ width, onStop }) => {
-  const redrawLayers = useCallback(() => {
-    checkerboardRef.current?.redraw();
-    if (!stageRef.current) return;
+  const layerRefs = useRef<Map<string, DrawingLayerHandle>>(new Map());
 
-    const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
-    const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
-    const maxPixelX = Math.ceil(
-      (pan.x + stage.width / stage.scale) / PIXEL_SIZE
-    );
-    const maxPixelY = Math.ceil(
-      (pan.y + stage.height / stage.scale) / PIXEL_SIZE
-    );
+  const isDrawing = useRef(false);
+  const pointerColor = useRef(hexToInt(primaryColor));
 
-    layers.forEach((layer, index) => {
-      const canvas = canvasRefs.current[index];
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+  const layers = currentFrame?.layers ?? [];
+  const activeLayerId = currentFrame.activeLayerId;
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (layer.visible) {
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.imageSmoothingQuality = 'low';
-        const snappedPanX = Math.floor(-pan.x * stage.scale);
-        const snappedPanY = Math.floor(-pan.y * stage.scale);
-        ctx.translate(snappedPanX, snappedPanY);
-
-        for (const [key, color] of layer.pixels.entries()) {
-          const [x, y] = key.split(',').map(Number);
-          if (
-            x >= minPixelX &&
-            x < maxPixelX &&
-            y >= minPixelY &&
-            y < maxPixelY
-          ) {
-            const hexColor = intToHex(color);
-            if (hexColor !== 'transparent') {
-              ctx.fillStyle = hexColor;
-              ctx.fillRect(
-                Math.floor(x * PIXEL_SIZE * stage.scale),
-                Math.floor(y * PIXEL_SIZE * stage.scale),
-                Math.ceil(PIXEL_SIZE * stage.scale),
-                Math.ceil(PIXEL_SIZE * stage.scale)
-              );
-            }
-          }
-        }
-        ctx.restore();
+  const handleMouseMove = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = getPointerPos(e, stage, pan);
+      if (
+        isDrawing.current &&
+        pos &&
+        (currentTool === 'pencil' || currentTool === 'eraser')
+      ) {
+        layerRefs.current
+          .get(activeLayerId)
+          ?.paint(pos.row, pos.col, pointerColor.current);
       }
+    },
+    [currentTool, stage, pan, activeLayerId]
+  );
 
-      const imageNode = imageRefs.current[index];
-      if (imageNode) {
-        imageNode.image(canvas);
+  const handleMouseDown = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (!(e.evt.button === 0 || e.evt.button === 2)) return;
+      e.evt.preventDefault();
+
+      isDrawing.current = true;
+      pointerColor.current = hexToInt(
+        e.evt.button === 2 ? secondaryColor : primaryColor
+      );
+      const pos = getPointerPos(e, stage, pan);
+      if (pos) {
+        layerRefs.current
+          .get(activeLayerId)
+          ?.paint(pos.row, pos.col, pointerColor.current);
       }
-    });
+      e.evt.preventDefault();
+      e.evt.stopPropagation();
+    },
+    [activeLayerId, stage, pan, primaryColor, secondaryColor]
+  );
 
-    stageRef.current.batchDraw();
-  }, [layers, stage.width, stage.height, pan.x, pan.y, stage.scale]);
+  const handleMouseUp = useCallback(() => {
+    isDrawing.current = false;
+    layerRefs.current.get(activeLayerId)?.flush();
+  }, [activeLayerId]);
 
-  useEffect(() => {
-    redrawLayers();
-  }, [redrawLayers]);
-
-  return layers.map(
-    (layer, index) =>
-      layer.visible && (
-        <Layer
-          key={layer.id}
-          opacity={layer.opacity / 100}
-          imageSmoothingEnabled={false}
-        >
-          <Image
-            ref={(node) => {
-              if (node) {
-                imageRefs.current[index] = node;
-              }
-            }}
-            image={canvasRefs.current[index]}
-            width={stage.width}
-            height={stage.height}
-            x={0}
-            y={0}
-            listening={false}
-          />
-        </Layer>
-      )
+  return (
+    <Layer
+      imageSmoothingEnabled={false}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      width={stage.width}
+      height={stage.height}
+    >
+      {layers.map(
+        (layer) =>
+          layer.visible && (
+            <DrawingLayer
+              key={layer.id}
+              ref={(node) => {
+                if (node) layerRefs.current.set(layer.id, node);
+                else layerRefs.current.delete(layer.id);
+              }}
+              id={layer.id}
+            />
+          )
+      )}
+    </Layer>
   );
 };

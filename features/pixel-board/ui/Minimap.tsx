@@ -20,7 +20,6 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
   const isDragging = useRef(false);
   const redrawRequested = useRef(false);
 
-  // Initialize canvas
   useEffect(() => {
     if (!minimapCanvasRef.current) {
       minimapCanvasRef.current = document.createElement('canvas');
@@ -38,7 +37,6 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
     setIsCanvasReady(true);
   }, []);
 
-  // Debounced redraw function
   const redrawMinimap = useCallback(() => {
     if (!minimapCanvasRef.current || !minimapStageRef.current) return;
     if (redrawRequested.current) return;
@@ -51,7 +49,6 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
         return;
       }
 
-      // Compute effective bounds
       const viewWidth = stage.width / stage.scale;
       const viewHeight = stage.height / stage.scale;
       const effectiveMinX = Math.min(
@@ -100,7 +97,6 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
       );
       ctx.clip();
 
-      // Draw pixels
       const pixelSizeScaled = PIXEL_SIZE * scale + 0.1;
       layers.forEach((layer) => {
         if (!layer.visible) return;
@@ -116,13 +112,11 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
         }
       });
 
-      // Draw viewport rectangle
       const viewX = (pan.x - effectiveMinX * PIXEL_SIZE) * scale;
       const viewY = (pan.y - effectiveMinY * PIXEL_SIZE) * scale;
       const viewWidthScaled = viewWidth * scale;
       const viewHeightScaled = viewHeight * scale;
 
-      // Clamp viewport to content bounds
       const clampedViewX = Math.max(
         0,
         Math.min(viewX, drawnWidth - viewWidthScaled)
@@ -193,7 +187,7 @@ export const Minimap: React.FC<MinimapProps> = ({ layers }) => {
   }, [redrawMinimap, isCanvasReady]);
 
   const handleMinimapDrag = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
+    (_: Konva.KonvaEventObject<MouseEvent>) => {
       if (!isDragging.current) return;
       const pos = minimapStageRef.current?.getPointerPosition();
       if (!pos) return;

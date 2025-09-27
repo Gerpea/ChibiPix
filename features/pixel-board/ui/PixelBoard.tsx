@@ -1,57 +1,40 @@
 'use client';
 
 import React, { useRef, useMemo, useEffect, useCallback } from 'react';
-import { Stage, Layer, Image, Rect } from 'react-konva';
+import { Stage } from 'react-konva';
 import Konva from 'konva';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { Checkerboard, CheckerboardHandle } from './Checkerboard';
 import { Minimap } from './Minimap';
-import { PIXEL_SIZE } from '../const';
-import { adjustColorOpacity, hexToInt, intToHex } from '@/shared/utils/colors';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { AiGenerationAreas } from './AiGenerationAreas/AiGenerationArea';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
 import { HighlightPixel } from './HighlightPixel';
+import { getPointerPos } from '../utils';
+import { DrawingLayers } from './DrawingLayers/DrawingLayers';
 
 export const PixelBoard: React.FC = () => {
   const currentFrame = useAnimationStore(
     (state) => state.frames[state.currentFrameIndex]
   );
-  const { setLayerPixels, aiAreas } = useAnimationStore();
+  const { aiAreas } = useAnimationStore();
+  const { currentTool } = useToolbarStore();
 
-  const { primaryColor, secondaryColor, currentTool, toolSettings } =
-    useToolbarStore();
-
-  const pointerColor = useRef(hexToInt(primaryColor));
-  const isDrawing = useRef(false);
   const isPanning = useRef(false);
   const lastPanPos = useRef<{ x: number; y: number } | null>(null);
+
   const checkerboardRef = useRef<CheckerboardHandle>(null);
 
-  // FIX: Use arrays instead of Maps for stable references across renders.
-  const canvasRefs = useRef<HTMLCanvasElement[]>([]);
-  const imageRefs = useRef<Konva.Image[]>([]);
-  const stageRef = useRef<Konva.Stage | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
-  const pendingPixels = useRef<
-    Map<string, { x: number; y: number; color: number }[]>
-  >(new Map());
+  const { hoverPixel, stage, pan, setBounds, setHoverPixel, setStage, setPan } =
+    usePixelBoardStore();
 
-  const {
-    bounds,
-    hoverPixel,
-    stage,
-    pan,
-    setBounds,
-    setHoverPixel,
-    setStage,
-    setPan,
-  } = usePixelBoardStore();
-
-  const layers = currentFrame?.layers ?? [];
-  const activeLayerId = currentFrame?.activeLayerId ?? null;
-
+  const layers = useMemo(() => currentFrame?.layers ?? [], [currentFrame]);
+  const activeLayerId = useMemo(
+    () => currentFrame?.activeLayerId ?? null,
+    [currentFrame]
+  );
   const layer = useMemo(
     () => layers.find((l) => l.id === activeLayerId),
     [layers, activeLayerId]
@@ -81,365 +64,76 @@ export const PixelBoard: React.FC = () => {
       maxY = 32;
     }
     setBounds({ minX, minY, maxX, maxY });
-  }, [layers]);
+  }, [layers, setBounds]);
 
-  useEffect(() => {
-    const requiredCanvases = layers.length;
-    canvasRefs.current.length = requiredCanvases;
-    imageRefs.current.length = requiredCanvases;
-
-    for (let i = 0; i < requiredCanvases; i++) {
-      let canvas = canvasRefs.current[i];
-      if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvasRefs.current[i] = canvas;
-      }
-      if (canvas.width !== stage.width || canvas.height !== stage.height) {
-        canvas.width = stage.width;
-        canvas.height = stage.height;
-      }
-    }
-  }, [layers.length, stage.width, stage.height]);
-
-  useEffect(() => {
-    pointerColor.current = hexToInt(primaryColor);
-  }, [primaryColor]);
-
-  const redrawLayers = useCallback(() => {
-    checkerboardRef.current?.redraw();
-    if (!stageRef.current) return;
-
-    const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
-    const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
-    const maxPixelX = Math.ceil(
-      (pan.x + stage.width / stage.scale) / PIXEL_SIZE
-    );
-    const maxPixelY = Math.ceil(
-      (pan.y + stage.height / stage.scale) / PIXEL_SIZE
-    );
-
-    layers.forEach((layer, index) => {
-      const canvas = canvasRefs.current[index];
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (layer.visible) {
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.imageSmoothingQuality = 'low';
-        const snappedPanX = Math.floor(-pan.x * stage.scale);
-        const snappedPanY = Math.floor(-pan.y * stage.scale);
-        ctx.translate(snappedPanX, snappedPanY);
-
-        for (const [key, color] of layer.pixels.entries()) {
-          const [x, y] = key.split(',').map(Number);
-          if (
-            x >= minPixelX &&
-            x < maxPixelX &&
-            y >= minPixelY &&
-            y < maxPixelY
-          ) {
-            const hexColor = intToHex(color);
-            if (hexColor !== 'transparent') {
-              ctx.fillStyle = hexColor;
-              ctx.fillRect(
-                Math.floor(x * PIXEL_SIZE * stage.scale),
-                Math.floor(y * PIXEL_SIZE * stage.scale),
-                Math.ceil(PIXEL_SIZE * stage.scale),
-                Math.ceil(PIXEL_SIZE * stage.scale)
-              );
-            }
-          }
-        }
-        ctx.restore();
-      }
-
-      const imageNode = imageRefs.current[index];
-      if (imageNode) {
-        imageNode.image(canvas);
-      }
-    });
-
-    stageRef.current.batchDraw();
-  }, [layers, stage.width, stage.height, pan.x, pan.y, stage.scale]);
-
-  useEffect(() => {
-    redrawLayers();
-  }, [redrawLayers]);
-
-  // Update stage size
   useEffect(() => {
     const updateSize = () => {
       if (!parentRef.current) return;
-      const { width, height } = parentRef.current.getBoundingClientRect();
+      const ref = parentRef.current;
+      const { width, height } = ref.getBoundingClientRect();
       setStage({ width, height });
     };
 
+    const ref = parentRef.current;
     const observer = new ResizeObserver(updateSize);
-    if (parentRef.current) {
-      observer.observe(parentRef.current);
+    if (ref) {
+      observer.observe(ref);
     }
     return () => {
-      if (parentRef.current) {
-        observer.unobserve(parentRef.current);
+      if (ref) {
+        observer.unobserve(ref);
       }
       observer.disconnect();
     };
-  }, [redrawLayers]);
+  }, [setStage]);
 
-  const flushPendingPixels = useCallback(() => {
-    pendingPixels.current.forEach((pixels, layerId) => {
-      if (pixels.length > 0) {
-        setLayerPixels(layerId, pixels);
-      }
-    });
-    pendingPixels.current.clear();
-  }, [setLayerPixels]);
+  useEffect(() => {
+    checkerboardRef.current?.redraw();
+  }, [stage, pan]);
 
-  const drawPixel = (row: number, col: number, color: number) => {
-    if (!layer || !layer.visible || !activeLayerId || layer.locked) return;
-
-    const activeLayerIndex = layers.findIndex((l) => l.id === activeLayerId);
-    if (activeLayerIndex === -1) return;
-
-    const canvas = canvasRefs.current[activeLayerIndex];
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const getOpacity = () => {
-      return currentTool === 'pencil' ||
-        currentTool === 'eraser' ||
-        currentTool === 'fill'
-        ? toolSettings[currentTool].opacity
-        : 100;
-    };
-    const getAdjustedColor = () => {
-      return currentTool === 'eraser' ? 0 : adjustColorOpacity(color, opacity);
-    };
-    const getSize = () => {
-      return currentTool === 'pencil' || currentTool === 'eraser'
-        ? toolSettings[currentTool]?.size || 1
-        : 1;
-    };
-
-    const opacity = getOpacity();
-    const adjustedColor = getAdjustedColor();
-    const size = getSize();
-    const offset = Math.floor(size / 2);
-
-    if (!pendingPixels.current.has(activeLayerId)) {
-      pendingPixels.current.set(activeLayerId, []);
-    }
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.imageSmoothingQuality = 'low';
-    const snappedPanX = Math.floor(-pan.x * stage.scale);
-    const snappedPanY = Math.floor(-pan.y * stage.scale);
-    ctx.translate(snappedPanX, snappedPanY);
-
-    for (let dy = -offset; dy < size - offset; dy++) {
-      for (let dx = -offset; dx < size - offset; dx++) {
-        const px = col + dx;
-        const py = row + dy;
-        if (
-          Object.values(aiAreas).some(
-            (area) =>
-              px >= area.startX &&
-              px < area.startX + 16 &&
-              py >= area.startY &&
-              py < area.startY + 16
-          )
-        )
-          continue;
-
-        pendingPixels.current.get(activeLayerId)!.push({
-          x: px,
-          y: py,
-          color: adjustedColor,
-        });
-
-        const hexColor = intToHex(adjustedColor);
-
-        ctx.clearRect(
-          Math.floor(px * PIXEL_SIZE * stage.scale),
-          Math.floor(py * PIXEL_SIZE * stage.scale),
-          Math.ceil(PIXEL_SIZE * stage.scale),
-          Math.ceil(PIXEL_SIZE * stage.scale)
-        );
-
-        if (adjustedColor !== 0) {
-          ctx.fillStyle = hexColor;
-          ctx.fillRect(
-            Math.floor(px * PIXEL_SIZE * stage.scale),
-            Math.floor(py * PIXEL_SIZE * stage.scale),
-            Math.ceil(PIXEL_SIZE * stage.scale),
-            Math.ceil(PIXEL_SIZE * stage.scale)
-          );
+  const handleMouseMove = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const stageEl = e.target.getStage();
+      if (!stageEl) return;
+      if (isPanning.current && lastPanPos.current) {
+        const currentPos = stageEl.getPointerPosition();
+        if (currentPos) {
+          const dx = (currentPos.x - lastPanPos.current.x) / stage.scale;
+          const dy = (currentPos.y - lastPanPos.current.y) / stage.scale;
+          setPan({ x: pan.x - dx, y: pan.y - dy });
+          lastPanPos.current = currentPos;
         }
-      }
-    }
-    ctx.restore();
-  };
-
-  const fillPixels = (startRow: number, startCol: number, color: number) => {
-    if (!layer || !layer.visible || layer.locked) return;
-
-    if (
-      Object.values(aiAreas).some(
-        (area) =>
-          startCol >= area.startX &&
-          startCol < area.startX + 16 &&
-          startRow >= area.startY &&
-          startRow < area.startY + 16
-      )
-    )
-      return;
-
-    const pixels = layer.pixels;
-    const targetColor = pixels.get(`${startCol},${startRow}`) ?? 0;
-    if (targetColor === color) return;
-
-    const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
-    const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
-    const maxPixelX = Math.ceil(
-      (pan.x + stage.width / stage.scale) / PIXEL_SIZE
-    );
-    const maxPixelY = Math.ceil(
-      (pan.y + stage.height / stage.scale) / PIXEL_SIZE
-    );
-
-    const newPixels: { x: number; y: number; color: number }[] = [];
-    const stack = [[startRow, startCol]];
-    const visited = new Set<string>();
-
-    while (stack.length) {
-      const [row, col] = stack.pop()!;
-      const key = `${col},${row}`;
-      if (visited.has(key)) continue;
-
-      if (
-        col < minPixelX ||
-        col >= maxPixelX ||
-        row < minPixelY ||
-        row >= maxPixelY
-      ) {
-        continue;
+        return;
       }
 
-      if (
-        Object.values(aiAreas).some(
-          (area) =>
-            col >= area.startX &&
-            col < area.startX + 16 &&
-            row >= area.startY &&
-            row < area.startY + 16
-        )
-      )
-        continue;
-
-      const currentColor = pixels.get(key) ?? 0;
-      if (currentColor !== targetColor) continue;
-
-      visited.add(key);
-      newPixels.push({ x: col, y: row, color });
-
-      stack.push([row + 1, col]);
-      stack.push([row - 1, col]);
-      stack.push([row, col + 1]);
-      stack.push([row, col - 1]);
-    }
-
-    pendingPixels.current.set(activeLayerId, newPixels);
-    flushPendingPixels();
-    redrawLayers();
-  };
-
-  const getPointerPos = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const pos = e.target.getStage()?.getPointerPosition();
-    if (!pos) return null;
-    const worldX = pos.x / stage.scale + pan.x;
-    const worldY = pos.y / stage.scale + pan.y;
-    const col = Math.floor(worldX / PIXEL_SIZE);
-    const row = Math.floor(worldY / PIXEL_SIZE);
-    return { row, col };
-  };
-
-  const handlePaint = (row: number, col: number) => {
-    if (!layer || !layer.visible || layer.locked) return;
-    if (currentTool === 'pencil') {
-      drawPixel(row, col, pointerColor.current);
-    } else if (currentTool === 'eraser') {
-      drawPixel(row, col, 0);
-    } else if (currentTool === 'fill') {
-      fillPixels(row, col, pointerColor.current);
-    }
-  };
-
-  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const stageEl = stageRef.current;
-    if (!stageEl) return;
-
-    if (isPanning.current && currentTool === 'pan' && lastPanPos.current) {
-      const currentPos = stageEl.getPointerPosition();
-      if (currentPos) {
-        const dx = (currentPos.x - lastPanPos.current.x) / stage.scale;
-        const dy = (currentPos.y - lastPanPos.current.y) / stage.scale;
-        setPan({ x: pan.x - dx, y: pan.y - dy });
-        lastPanPos.current = currentPos;
+      const pos = getPointerPos(e, stage, pan);
+      if (pos && (currentTool === 'pencil' || currentTool === 'eraser')) {
+        setHoverPixel(pos);
+      } else {
+        setHoverPixel(undefined);
       }
-      return;
-    }
+    },
+    [stage, pan, currentTool, setHoverPixel, setPan]
+  );
 
-    const pos = getPointerPos(e);
-    if (pos && (currentTool === 'pencil' || currentTool === 'eraser')) {
-      setHoverPixel(pos);
-    } else {
-      setHoverPixel(undefined);
-    }
-
-    if (
-      isDrawing.current &&
-      pos &&
-      (currentTool === 'pencil' || currentTool === 'eraser')
-    ) {
-      handlePaint(pos.row, pos.col);
-    }
-  };
-
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setHoverPixel(undefined);
-  };
+  }, [setHoverPixel]);
 
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button === 1 || currentTool === 'pan') {
-      isPanning.current = true;
-      lastPanPos.current = stageRef.current?.getPointerPosition() || null;
+  const handleMouseDown = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (!(e.evt.button == 1 || currentTool === 'pan')) return;
       e.evt.preventDefault();
-      return;
-    }
 
-    if (layer?.locked) return;
-
-    isDrawing.current = true;
-    pointerColor.current = hexToInt(
-      e.evt.button === 2 ? secondaryColor : primaryColor
-    );
-    const pos = getPointerPos(e);
-    if (pos) handlePaint(pos.row, pos.col);
-    e.evt.preventDefault();
-  };
+      isPanning.current = true;
+      lastPanPos.current = e.target.getStage()?.getPointerPosition() || null;
+    },
+    [currentTool]
+  );
 
   const handleMouseUp = () => {
-    isDrawing.current = false;
     isPanning.current = false;
     lastPanPos.current = null;
-    flushPendingPixels();
   };
 
   const handleContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -448,7 +142,7 @@ export const PixelBoard: React.FC = () => {
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
-    const stageEl = stageRef.current;
+    const stageEl = e.target.getStage();
     if (!stageEl) return;
 
     const scaleBy = 1.1;
@@ -469,7 +163,7 @@ export const PixelBoard: React.FC = () => {
     setPan({ x: newPanWorldX, y: newPanWorldY });
   };
 
-  const getCursor = () => {
+  const getCursor = useCallback(() => {
     if (
       layer?.locked &&
       (currentTool === 'pencil' ||
@@ -502,12 +196,9 @@ export const PixelBoard: React.FC = () => {
       default:
         return 'crosshair';
     }
-  };
+  }, [layer, currentTool, hoverPixel, aiAreas]);
 
-  const stageStyle = useMemo(
-    () => ({ cursor: getCursor() }),
-    [layer, hoverPixel, aiAreas, currentTool, isPanning.current]
-  );
+  const stageStyle = useMemo(() => ({ cursor: getCursor() }), [getCursor]);
 
   if (!currentFrame) {
     return (
@@ -523,7 +214,6 @@ export const PixelBoard: React.FC = () => {
       ref={parentRef}
     >
       <Stage
-        ref={stageRef}
         width={stage.width}
         height={stage.height}
         style={stageStyle}
@@ -535,34 +225,9 @@ export const PixelBoard: React.FC = () => {
         onWheel={handleWheel}
       >
         <Checkerboard ref={checkerboardRef} />
-
-        {layers.map(
-          (layer, index) =>
-            layer.visible && (
-              <Layer
-                key={layer.id}
-                opacity={layer.opacity / 100}
-                imageSmoothingEnabled={false}
-              >
-                <Image
-                  ref={(node) => {
-                    if (node) {
-                      imageRefs.current[index] = node;
-                    }
-                  }}
-                  image={canvasRefs.current[index]}
-                  width={stage.width}
-                  height={stage.height}
-                  x={0}
-                  y={0}
-                  listening={false}
-                />
-              </Layer>
-            )
-        )}
-
-        <AiGenerationAreas />
-        <HighlightPixel />
+        <DrawingLayers />
+        {/* <AiGenerationAreas />
+        <HighlightPixel /> */}
       </Stage>
       <Minimap layers={layers} />
     </div>

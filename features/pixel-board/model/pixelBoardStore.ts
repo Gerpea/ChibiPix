@@ -1,23 +1,23 @@
 import { create } from 'zustand';
 
-interface Pixel {
+export interface Pixel {
   row: number;
   col: number;
 }
-interface Bounds {
+export interface Bounds {
   minX: number;
   minY: number;
   maxX: number;
   maxY: number;
 }
 
-interface Stage {
+export interface Stage {
   width: number;
   height: number;
   scale: number;
 }
 
-interface Pan {
+export interface Pan {
   x: number;
   y: number;
 }

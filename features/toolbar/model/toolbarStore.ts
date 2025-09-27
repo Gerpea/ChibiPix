@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan';
 
-interface ToolSettings {
+export interface ToolSettings {
   pencil: { size: number; opacity: number };
   eraser: { size: number; opacity: number };
   fill: { opacity: number };
