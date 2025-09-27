@@ -27,15 +27,16 @@ export const DrawingLayers: React.FC = () => {
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const pos = getPointerPos(e, stage, pan);
       if (
         isDrawing.current &&
-        pos &&
         (currentTool === 'pencil' || currentTool === 'eraser')
       ) {
-        layerRefs.current
-          .get(activeLayerId)
-          ?.paint(pos.row, pos.col, pointerColor.current);
+        const pos = getPointerPos(e, stage, pan);
+        if (pos) {
+          layerRefs.current
+            .get(activeLayerId)
+            ?.paint(pos.row, pos.col, pointerColor.current);
+        }
       }
     },
     [currentTool, stage, pan, activeLayerId]
@@ -67,6 +68,7 @@ export const DrawingLayers: React.FC = () => {
     layerRefs.current.get(activeLayerId)?.flush();
   }, [activeLayerId]);
 
+  console.log(layers);
   return (
     <Layer
       imageSmoothingEnabled={false}

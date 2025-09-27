@@ -34,9 +34,7 @@ interface Generation {
 
 interface AIState {
   generations: Record<string, Generation>;
-  currentPrompt: string;
-  setCurrentPrompt: (prompt: string) => void;
-  startGeneration: () => Promise<void>;
+  startGeneration: (prompt: string) => Promise<void>;
   stopGeneration: (id: string) => void;
 }
 
@@ -101,20 +99,13 @@ export const useAIStore = create<AIState>()(
   devtools(
     (set, get) => ({
       generations: {},
-      currentPrompt: '',
-      setCurrentPrompt: (prompt) => set({ currentPrompt: prompt }),
-      startGeneration: async () => {
+      startGeneration: async (prompt: string) => {
         const id = Date.now().toString();
-        const prompt = get().currentPrompt;
-        if (!prompt) {
-          return;
-        }
 
         const animationState = useAnimationStore.getState();
         const currentFrame =
           animationState.frames[animationState.currentFrameIndex];
         if (!currentFrame) {
-          // Handle error if no frame exists
           set((state) => ({
             generations: {
               ...state.generations,
@@ -200,7 +191,6 @@ export const useAIStore = create<AIState>()(
                   format: 'json',
                 });
 
-          // Prompt optimizer chain
           const optimizerPromptTemplate = ChatPromptTemplate.fromMessages([
             ['system', OPTIMIZER_SYSTEM_PROMPT],
             ['human', '{input}'],
@@ -219,12 +209,11 @@ export const useAIStore = create<AIState>()(
                   .optimizedPrompt;
               } catch (e) {
                 console.error('Optimizer JSON parsing error:', e);
-                return prompt; // Fallback to original prompt
+                return prompt;
               }
             },
           ]);
 
-          // Optimize the prompt
           const optimizedPrompt = await optimizerChain.invoke(
             { input: prompt },
             { signal }
@@ -239,14 +228,12 @@ export const useAIStore = create<AIState>()(
             },
           }));
 
-          // Drawing agent chain
           const drawPromptTemplate = ChatPromptTemplate.fromMessages([
             ['system', DRAW_SYSTEM_PROMPT],
             ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
             new MessagesPlaceholder('agent_scratchpad'),
           ]);
 
-          // Critic agent chain
           const criticPromptTemplate = ChatPromptTemplate.fromMessages([
             ['system', CRITIC_SYSTEM_PROMPT],
             ['human', 'Prompt: {input}\nCurrent pixels: {pixels}'],
@@ -379,10 +366,7 @@ export const useAIStore = create<AIState>()(
                       ...state.generations,
                       [id]: {
                         ...state.generations[id],
-                        thoughts: [
-                          ...state.generations[id].thoughts,
-                          `Drawing Agent (Iteration ${iteration + 1}): ${thoughts}`,
-                        ],
+                        thoughts: [...state.generations[id].thoughts, thoughts],
                       },
                     },
                   }));
@@ -393,7 +377,6 @@ export const useAIStore = create<AIState>()(
                   totalPixels += drawnPixels.length;
                   allPixels = [...allPixels, ...pixels];
 
-                  // Evaluate with critic
                   const criticResponse = await criticPromptTemplate
                     .pipe(llm)
                     .invoke(
@@ -406,19 +389,6 @@ export const useAIStore = create<AIState>()(
 
                   const { isComplete, feedback } =
                     parseCriticResponse(criticResponse);
-                  set((state) => ({
-                    generations: {
-                      ...state.generations,
-                      [id]: {
-                        ...state.generations[id],
-                        thoughts: [
-                          ...state.generations[id].thoughts,
-                          `Critic Feedback (Iteration ${iteration + 1}): ${feedback}`,
-                        ],
-                      },
-                    },
-                  }));
-                  console.log('Critic feedback:', feedback);
 
                   if (isComplete) {
                     break;
@@ -454,7 +424,6 @@ export const useAIStore = create<AIState>()(
             },
           ]);
 
-          // Run the agent
           await agent.invoke(
             { input: optimizedPrompt, agent_scratchpad: [], pixels: '[]' },
             { signal }

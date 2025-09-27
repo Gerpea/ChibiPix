@@ -93,6 +93,15 @@ export const PixelBoard: React.FC = () => {
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (currentTool === 'pencil' || currentTool === 'eraser') {
+        const pos = getPointerPos(e, stage, pan);
+        if (pos) {
+          setHoverPixel(pos);
+        }
+      } else {
+        setHoverPixel(undefined);
+      }
+
       const stageEl = e.target.getStage();
       if (!stageEl) return;
       if (isPanning.current && lastPanPos.current) {
@@ -104,13 +113,6 @@ export const PixelBoard: React.FC = () => {
           lastPanPos.current = currentPos;
         }
         return;
-      }
-
-      const pos = getPointerPos(e, stage, pan);
-      if (pos && (currentTool === 'pencil' || currentTool === 'eraser')) {
-        setHoverPixel(pos);
-      } else {
-        setHoverPixel(undefined);
       }
     },
     [stage, pan, currentTool, setHoverPixel, setPan]
@@ -196,7 +198,7 @@ export const PixelBoard: React.FC = () => {
       default:
         return 'crosshair';
     }
-  }, [layer, currentTool, hoverPixel, aiAreas]);
+  }, [layer?.locked, currentTool, aiAreas]);
 
   const stageStyle = useMemo(() => ({ cursor: getCursor() }), [getCursor]);
 
