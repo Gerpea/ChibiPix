@@ -226,8 +226,8 @@ export const PixelBoard: React.FC = () => {
       >
         <Checkerboard ref={checkerboardRef} />
         <DrawingLayers />
-        {/* <AiGenerationAreas />
-        <HighlightPixel /> */}
+        <AiGenerationAreas />
+        <HighlightPixel />
       </Stage>
       <Minimap layers={layers} />
     </div>

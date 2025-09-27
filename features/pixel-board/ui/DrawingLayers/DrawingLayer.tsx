@@ -124,6 +124,17 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
 
     const drawPixel = useCallback(
       (row: number, col: number, color: number) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.imageSmoothingQuality = 'low';
+        const snappedPanX = Math.floor(-pan.x * stage.scale);
+        const snappedPanY = Math.floor(-pan.y * stage.scale);
+        ctx.translate(snappedPanX, snappedPanY);
+
         const opacity = getOpacity(currentTool, toolSettings);
         const adjustedColor = getAdjustedColor(currentTool, color, opacity);
         const size = getSize(currentTool, toolSettings);
@@ -139,12 +150,34 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
               y: py,
               color: adjustedColor,
             });
+
+            const hexColor = intToHex(adjustedColor);
+
+            ctx.clearRect(
+              Math.floor(px * PIXEL_SIZE * stage.scale),
+              Math.floor(py * PIXEL_SIZE * stage.scale),
+              Math.ceil(PIXEL_SIZE * stage.scale),
+              Math.ceil(PIXEL_SIZE * stage.scale)
+            );
+
+            if (hexColor !== 'transparent') {
+              ctx.fillStyle = hexColor;
+              ctx.fillRect(
+                Math.floor(px * PIXEL_SIZE * stage.scale),
+                Math.floor(py * PIXEL_SIZE * stage.scale),
+                Math.ceil(PIXEL_SIZE * stage.scale),
+                Math.ceil(PIXEL_SIZE * stage.scale)
+              );
+              const imageNode = imageRef.current;
+              if (imageNode) {
+                imageNode.image(canvas);
+              }
+            }
           }
         }
-
-        flushPendingPixels();
+        ctx.restore();
       },
-      [id, currentTool, toolSettings, flushPendingPixels]
+      [id, currentTool, toolSettings, stage, pan]
     );
 
     const fillPixels = useCallback(
