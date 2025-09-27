@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimationPanel } from '@/features/animation/ui/AnimationPanel';
-import { RightPanel } from '@/features/layers/ui/RightPanels';
+import { RightPanel } from '@/features/right-panel/ui/RightPanels';
 import { PixelBoard } from '@/features/pixel-board/ui/PixelBoard';
 import { Toolbar } from '@/features/toolbar/ui/Toolbar';
 import { Topbar } from '@/features/topbar/ui/Topbar';

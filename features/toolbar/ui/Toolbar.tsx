@@ -55,6 +55,7 @@ export const Toolbar: React.FC = () => {
         value={currentTool}
         onValueChange={(value: Tool) => setCurrentTool(value)}
         className="flex flex-col gap-2"
+        unselectable="off"
       >
         <ToggleGroupItem value="pencil">
           <PencilIcon />

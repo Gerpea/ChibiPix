@@ -88,7 +88,6 @@ export const AnimationPanel: React.FC = () => {
         setFrameDuration(index, newDuration);
       });
       if (isPlaying) {
-        // Restart playback with new FPS
         pause();
         play();
       }

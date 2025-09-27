@@ -1,7 +1,4 @@
-// features/serialization/animationSerialization.ts
-
-import { Frame } from '@/features/animation/model/animationStore';
-import { Layer } from '@/features/layers/model/layerStore';
+import { Frame, Layer } from '@/features/animation/model/animationStore';
 
 const workerURL = '/workers/serialization.js';
 
