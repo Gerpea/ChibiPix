@@ -119,7 +119,7 @@ export const FrameItem: React.FC<FrameItemProps> = ({
       ref={setNodeRef}
       onClick={handleSelect}
       style={style}
-      className={`relative flex items-start rounded-md rounded-t-none border bg-gray-100 p-2 ${active ? 'border-gray-500 bg-blue-100' : 'border-gray-200'} overflow-hidden`}
+      className={`relative flex items-start rounded-md rounded-t-none border bg-gray-100 p-2 ${active ? 'border-gray-500' : 'border-gray-200'} overflow-hidden`}
     >
       <div className="flex flex-col items-center gap-2">
         <GripHorizontalIcon {...listeners} className="h-4 w-4 cursor-grab" />

@@ -17,6 +17,6 @@
   - [x] Add preview/playback for animations
 
 - 💾 **Export Options** – Export your spritesheets, GIFs, or PNG frames.
-  - [ ] Export as PNG frames
-  - [ ] Export as GIF
+  - [x] Export as PNG frames
+  - [x] Export as GIF
   - [ ] Export as spritesheet
