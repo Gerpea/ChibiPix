@@ -10,6 +10,7 @@ import { exportFramesToGIF } from '@/features/serialization/lib/gif';
 import { Slider } from '@/shared/ui/Slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { SketchPicker } from 'react-color';
+import { debounce } from 'lodash';
 import { PIXEL_SIZE } from '@/features/pixel-board/const';
 
 export const GifTab: React.FC = () => {
@@ -80,17 +81,22 @@ export const GifTab: React.FC = () => {
     [frames, padding, quality, backgroundColor, name]
   );
 
-  const handleGeneratePreview = useCallback(() => {
-    generateGIF(true);
-  }, [generateGIF]);
-
   const handleExport = useCallback(() => {
     generateGIF(false);
   }, [generateGIF]);
 
   useEffect(() => {
-    handleGeneratePreview();
-  }, [handleGeneratePreview, padding, backgroundColor]);
+    const debouncedPreview = debounce(() => {
+      generateGIF(true);
+    }, 300); // 300ms debounce
+
+    debouncedPreview();
+
+    // Cleanup
+    return () => {
+      debouncedPreview.cancel();
+    };
+  }, [generateGIF, padding, backgroundColor]);
 
   return (
     <div className="flex h-full flex-col gap-4">
