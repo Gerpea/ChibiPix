@@ -3,6 +3,7 @@ import { NativeTab } from './Tabs/NativeTab';
 import { PngTab } from './Tabs/PngTab';
 import { JpgTab } from './Tabs/JpgTab';
 import { GifTab } from './Tabs/GifTab';
+import { SpritesheetTab } from './Tabs/SpritesheetTab';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,6 @@ import {
   DialogTitle,
 } from '@/shared/ui/Dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/Tabs';
-import { ScrollArea } from '@/shared/ui/ScrollArea';
 
 interface ExportDialogProps {
   open: boolean;
@@ -26,7 +26,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         <DialogHeader>
           <DialogTitle>Export Animation</DialogTitle>
         </DialogHeader>
-        <div className="flex h-[400px]">
+        <div className="flex h-[720px]">
           <Tabs
             value={selectedFormat}
             onValueChange={setSelectedFormat}
@@ -58,6 +58,12 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
               >
                 .gif
               </TabsTrigger>
+              <TabsTrigger
+                value="sheet"
+                className="flex w-full justify-center p-2"
+              >
+                sheet
+              </TabsTrigger>
             </TabsList>
             <TabsContent
               value="anim"
@@ -73,6 +79,12 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
             </TabsContent>
             <TabsContent value="gif" className="mt-0 w-full overflow-auto px-4">
               <GifTab />
+            </TabsContent>
+            <TabsContent
+              value="sheet"
+              className="mt-0 w-full overflow-auto px-4"
+            >
+              <SpritesheetTab />
             </TabsContent>
           </Tabs>
         </div>
