@@ -51,6 +51,13 @@ export const DrawingLayers: React.FC = () => {
     [activeLayerId]
   );
 
+  const handleMouseLeave = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      layerRefs.current.get(activeLayerId)?.onMouseLeave(e);
+    },
+    [activeLayerId]
+  );
+
   const handleMouseWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
       const pos = getPointerPos(e, stage, pan);
@@ -67,6 +74,7 @@ export const DrawingLayers: React.FC = () => {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       onWheel={handleMouseWheel}
       width={stage.width}
       height={stage.height}

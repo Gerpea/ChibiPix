@@ -46,7 +46,7 @@ interface DrawingLayerProps {
   id: string;
 }
 
-export type DrawingLayerHandle = Omit<Tool, 'renderOverlay'>;
+export type DrawingLayerHandle = Tool;
 
 export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
   ({ id }, ref) => {
@@ -163,6 +163,10 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
             image: imageRef.current,
           });
           tool.current?.onWheel(row, col, e);
+          tool.current = null;
+        },
+        onMouseLeave(e) {
+          tool.current?.onMouseLeave(e);
           tool.current = null;
         },
       }),

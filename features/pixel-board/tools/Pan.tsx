@@ -50,5 +50,5 @@ export class PanTool implements Tool {
     col: number,
     e: Konva.KonvaEventObject<WheelEvent>
   ): void {}
-  renderOverlay(): void {}
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void {}
 }

@@ -28,5 +28,5 @@ export interface Tool {
     col: number,
     e: Konva.KonvaEventObject<WheelEvent>
   ): void;
-  renderOverlay(): void;
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void;
 }

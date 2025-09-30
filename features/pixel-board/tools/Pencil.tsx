@@ -56,7 +56,7 @@ export class PencilTool implements Tool {
     col: number,
     e: Konva.KonvaEventObject<WheelEvent>
   ): void {}
-  renderOverlay(): void {}
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void {}
 
   protected drawPixel(row: number, col: number) {
     const ctx = this.ctx.ctx;

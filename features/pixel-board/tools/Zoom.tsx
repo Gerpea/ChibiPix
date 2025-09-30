@@ -48,5 +48,5 @@ export class ZoomTool implements Tool {
     usePixelBoardStore.getState().setStage({ scale: snappedScale });
     usePixelBoardStore.getState().setPan({ x: newPanWorldX, y: newPanWorldY });
   }
-  renderOverlay(): void {}
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void {}
 }

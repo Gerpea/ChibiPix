@@ -49,7 +49,7 @@ export class FillTool implements Tool {
     col: number,
     e: Konva.KonvaEventObject<WheelEvent>
   ): void {}
-  renderOverlay(): void {}
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void {}
 
   fillPixels(startRow: number, startCol: number) {
     const color = this.color;

@@ -59,8 +59,8 @@ export class PanWrapper implements Tool {
     this.baseTool.onWheel(row, col, e);
   }
 
-  renderOverlay(): void {
-    this.baseTool.renderOverlay();
+  onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void {
+    this.baseTool.onMouseLeave(e);
   }
 }
 
