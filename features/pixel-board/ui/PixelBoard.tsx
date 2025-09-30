@@ -20,11 +20,7 @@ export const PixelBoard: React.FC = () => {
   const { aiAreas } = useAnimationStore();
   const { currentTool } = useToolbarStore();
 
-  const isPanning = useRef(false);
-  const lastPanPos = useRef<{ x: number; y: number } | null>(null);
-
   const checkerboardRef = useRef<CheckerboardHandle>(null);
-
   const parentRef = useRef<HTMLDivElement>(null);
 
   const { hoverPixel, stage, pan, setBounds, setHoverPixel, setStage, setPan } =
@@ -101,19 +97,6 @@ export const PixelBoard: React.FC = () => {
       } else {
         setHoverPixel(undefined);
       }
-
-      const stageEl = e.target.getStage();
-      if (!stageEl) return;
-      if (isPanning.current && lastPanPos.current) {
-        const currentPos = stageEl.getPointerPosition();
-        if (currentPos) {
-          const dx = (currentPos.x - lastPanPos.current.x) / stage.scale;
-          const dy = (currentPos.y - lastPanPos.current.y) / stage.scale;
-          setPan({ x: pan.x - dx, y: pan.y - dy });
-          lastPanPos.current = currentPos;
-        }
-        return;
-      }
     },
     [stage, pan, currentTool, setHoverPixel, setPan]
   );
@@ -122,47 +105,8 @@ export const PixelBoard: React.FC = () => {
     setHoverPixel(undefined);
   }, [setHoverPixel]);
 
-  const handleMouseDown = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!(e.evt.button == 1 || currentTool === 'pan')) return;
-      e.evt.preventDefault();
-
-      isPanning.current = true;
-      lastPanPos.current = e.target.getStage()?.getPointerPosition() || null;
-    },
-    [currentTool]
-  );
-
-  const handleMouseUp = () => {
-    isPanning.current = false;
-    lastPanPos.current = null;
-  };
-
   const handleContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
-  };
-
-  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
-    const stageEl = e.target.getStage();
-    if (!stageEl) return;
-
-    const scaleBy = 1.1;
-    const oldScale = stage.scale;
-    const pointer = stageEl.getPointerPosition();
-    if (!pointer) return;
-
-    const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    const boundedScale = Math.max(0.5, Math.min(newScale, 32));
-    const snappedScale = Math.round(boundedScale * 10) / 10;
-
-    const newPanWorldX =
-      pan.x + pointer.x / oldScale - pointer.x / boundedScale;
-    const newPanWorldY =
-      pan.y + pointer.y / oldScale - pointer.y / boundedScale;
-
-    setStage({ scale: snappedScale });
-    setPan({ x: newPanWorldX, y: newPanWorldY });
   };
 
   const getCursor = useCallback(() => {
@@ -193,8 +137,6 @@ export const PixelBoard: React.FC = () => {
         return 'cell';
       case 'fill':
         return 'pointer';
-      case 'pan':
-        return isPanning.current ? 'grabbing' : 'grab';
       default:
         return 'crosshair';
     }
@@ -219,12 +161,9 @@ export const PixelBoard: React.FC = () => {
         width={stage.width}
         height={stage.height}
         style={stageStyle}
-        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onMouseUp={handleMouseUp}
         onContextMenu={handleContextMenu}
-        onWheel={handleWheel}
       >
         <Checkerboard ref={checkerboardRef} />
         <DrawingLayers />

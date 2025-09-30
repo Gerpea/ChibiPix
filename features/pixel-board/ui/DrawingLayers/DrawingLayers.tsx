@@ -5,7 +5,6 @@ import { Layer } from 'react-konva';
 import Konva from 'konva';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
-import { hexToInt } from '@/shared/utils/colors';
 import { usePixelBoardStore } from '../../model/pixelBoardStore';
 import { DrawingLayer, DrawingLayerHandle } from './DrawingLayer';
 import { getPointerPos } from '../../utils';
@@ -19,24 +18,14 @@ export const DrawingLayers: React.FC = () => {
 
   const layerRefs = useRef<Map<string, DrawingLayerHandle>>(new Map());
 
-  const isDrawing = useRef(false);
-  const pointerColor = useRef(hexToInt(primaryColor));
-
   const layers = currentFrame?.layers ?? [];
   const activeLayerId = currentFrame.activeLayerId;
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (
-        isDrawing.current &&
-        (currentTool === 'pencil' || currentTool === 'eraser')
-      ) {
-        const pos = getPointerPos(e, stage, pan);
-        if (pos) {
-          layerRefs.current
-            .get(activeLayerId)
-            ?.paint(pos.row, pos.col, pointerColor.current);
-        }
+      const pos = getPointerPos(e, stage, pan);
+      if (pos) {
+        layerRefs.current.get(activeLayerId)?.onMouseMove(pos.row, pos.col, e);
       }
     },
     [currentTool, stage, pan, activeLayerId]
@@ -44,37 +33,41 @@ export const DrawingLayers: React.FC = () => {
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!(e.evt.button === 0 || e.evt.button === 2)) return;
-      e.evt.preventDefault();
-
-      isDrawing.current = true;
-      pointerColor.current = hexToInt(
-        e.evt.button === 2 ? secondaryColor : primaryColor
-      );
       const pos = getPointerPos(e, stage, pan);
       if (pos) {
-        layerRefs.current
-          .get(activeLayerId)
-          ?.paint(pos.row, pos.col, pointerColor.current);
+        layerRefs.current.get(activeLayerId)?.onMouseDown(pos.row, pos.col, e);
       }
-      e.evt.preventDefault();
-      e.evt.stopPropagation();
     },
     [activeLayerId, stage, pan, primaryColor, secondaryColor]
   );
 
-  const handleMouseUp = useCallback(() => {
-    isDrawing.current = false;
-    layerRefs.current.get(activeLayerId)?.flush();
-  }, [activeLayerId]);
+  const handleMouseUp = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const pos = getPointerPos(e, stage, pan);
+      if (pos) {
+        layerRefs.current.get(activeLayerId)?.onMouseUp(pos.row, pos.col, e);
+      }
+    },
+    [activeLayerId]
+  );
 
-  console.log(layers);
+  const handleMouseWheel = useCallback(
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
+      const pos = getPointerPos(e, stage, pan);
+      if (pos) {
+        layerRefs.current.get(activeLayerId)?.onWheel(pos.row, pos.col, e);
+      }
+    },
+    [activeLayerId]
+  );
+
   return (
     <Layer
       imageSmoothingEnabled={false}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onWheel={handleMouseWheel}
       width={stage.width}
       height={stage.height}
     >

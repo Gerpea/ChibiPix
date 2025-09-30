@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan';
+export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan' | 'zoom';
 
 export interface ToolSettings {
   pencil: { size: number; opacity: number };

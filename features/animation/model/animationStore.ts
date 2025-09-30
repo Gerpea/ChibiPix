@@ -24,6 +24,12 @@ export interface Frame {
   duration: number;
 }
 
+export interface Pixel {
+  x: number;
+  y: number;
+  color: number;
+}
+
 interface AnimationState {
   frames: Frame[];
   currentFrameIndex: number;
@@ -48,11 +54,7 @@ interface AnimationState {
   removeLayer: (id: string) => void;
   duplicateLayer: (layerId: string) => void;
   setActiveLayer: (id: string) => void;
-  setLayerPixels: (
-    layerId: string,
-    pixels: { x: number; y: number; color: number }[],
-    force?: boolean
-  ) => void;
+  setLayerPixels: (layerId: string, pixels: Pixel[], force?: boolean) => void;
   toggleLayerVisibility: (id: string) => void;
   toggleLayerLock: (id: string) => void;
   setLayerLock: (id: string, locked: boolean) => void;
