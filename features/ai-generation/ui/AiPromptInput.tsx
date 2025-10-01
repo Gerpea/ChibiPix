@@ -3,7 +3,7 @@
 import React, { useCallback, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { Textarea } from '@/shared/ui/Textarea';
-import { useAIStore } from '../models/aiStore';
+import { useAIStore } from '../model/aiStore';
 
 export const AIPromptInput: React.FC = () => {
   const { startGeneration } = useAIStore();

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import Konva from 'konva';
 import { Image as KonvaImage, Group } from 'react-konva';
-import { PIXEL_SIZE } from '../../const';
-import { usePixelBoardStore } from '../../model/pixelBoardStore';
+import { usePixelBoardStore } from '@/features/pixel-board/model/pixelBoardStore';
+import { PIXEL_SIZE } from '@/features/pixel-board/const';
 
 interface FlipFlopPixelGridProps {
   x: number;

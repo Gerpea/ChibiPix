@@ -10,12 +10,13 @@ import React, {
   useRef,
 } from 'react';
 import { Image as KonvaImage } from 'react-konva';
+import { useAIStore } from '@/features/ai-generation/model/aiStore';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
 import {
   useToolbarStore,
   Tool as StoreTool,
 } from '@/features/toolbar/model/toolbarStore';
-import { intToHex } from '@/shared/utils/colors';
+import { hexToInt, intToHex } from '@/shared/utils/colors';
 import { PIXEL_SIZE } from '../../const';
 import { usePixelBoardStore } from '../../model/pixelBoardStore';
 import { Tool, ToolContext } from '../../tools/Tool';
@@ -26,6 +27,7 @@ import { ZoomTool } from '../../tools/Zoom';
 import { withPan } from '../../tools/wrappers/PanWrapper';
 import { EraserTool } from '../../tools/Eraser';
 import { withZoom } from '../../tools/wrappers/ZoomWrapper';
+import { AIGenerationFX } from './AiGenerationFX/AiGenerationFX';
 
 function getTool(currentTool: StoreTool, ctx: ToolContext): Tool | undefined {
   switch (currentTool) {
@@ -55,6 +57,7 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
     );
     const { stage, pan } = usePixelBoardStore();
     const { currentTool } = useToolbarStore();
+    const { generations, stopGeneration } = useAIStore();
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<Konva.Image>(null);
@@ -63,8 +66,33 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
     const layers = useMemo(() => currentFrame?.layers ?? [], [currentFrame]);
     const layer = useMemo(() => layers.find((l) => l.id === id), [layers, id]);
 
+    const activeGeneration = useMemo(
+      () =>
+        Object.values(generations).find(
+          (gen) => gen.isGenerating && gen.layerId === id && gen.area
+        ),
+      [generations, id]
+    );
+
     const redraw = useCallback(() => {
       if (!layer?.visible) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const combinedPixels = new Map<string, number>(layer.pixels);
+
+      if (activeGeneration) {
+        for (const pixel of activeGeneration.generatedPixels) {
+          const absX = pixel.x + activeGeneration.area!.startX;
+          const absY = pixel.y + activeGeneration.area!.startY;
+          const key = `${absX},${absY}`;
+          const colorInt = hexToInt(pixel.color);
+          combinedPixels.set(key, colorInt);
+        }
+      }
 
       const minPixelX = Math.floor(pan.x / PIXEL_SIZE);
       const minPixelY = Math.floor(pan.y / PIXEL_SIZE);
@@ -75,10 +103,6 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
         (pan.y + stage.height / stage.scale) / PIXEL_SIZE
       );
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -89,7 +113,7 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
       const snappedPanY = Math.floor(-pan.y * stage.scale);
       ctx.translate(snappedPanX, snappedPanY);
 
-      for (const [key, color] of layer.pixels.entries()) {
+      for (const [key, color] of combinedPixels.entries()) {
         const [x, y] = key.split(',').map(Number);
         if (
           x >= minPixelX &&
@@ -116,7 +140,7 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
         imageNode.image(canvas);
       }
       imageNode?.getStage()?.batchDraw();
-    }, [stage, pan, layer]);
+    }, [stage, pan, layer, id, generations, activeGeneration]);
 
     useEffect(() => redraw(), [redraw]);
 
@@ -170,21 +194,29 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
           tool.current = null;
         },
       }),
-      []
+      [currentTool]
     );
 
     return (
       canvasRef.current &&
       layer &&
       layer.visible && (
-        <KonvaImage
-          ref={imageRef}
-          image={canvasRef.current}
-          width={stage.width}
-          height={stage.height}
-          x={0}
-          y={0}
-        />
+        <>
+          <KonvaImage
+            ref={imageRef}
+            image={canvasRef.current}
+            width={stage.width}
+            height={stage.height}
+            x={0}
+            y={0}
+          />
+          {activeGeneration && (
+            <AIGenerationFX
+              generation={activeGeneration}
+              onStop={stopGeneration}
+            />
+          )}
+        </>
       )
     );
   }

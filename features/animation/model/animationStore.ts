@@ -7,6 +7,8 @@ import {
   importAnimation,
   ImportProgress,
 } from '@/features/serialization/utils';
+import { useAIStore } from '@/features/ai-generation/model/aiStore';
+import { isPixelInActiveAIArea } from '@/features/ai-generation/lib/utils';
 
 export interface Layer {
   id: string;
@@ -37,7 +39,6 @@ interface AnimationState {
   isPlaying: boolean;
   timer: number | null;
   currentTime: number;
-  aiAreas: Record<string, { startX: number; startY: number }>;
 
   addFrame: (duplicateCurrent?: boolean) => void;
   removeFrame: (index: number) => void;
@@ -60,9 +61,6 @@ interface AnimationState {
   setLayerLock: (id: string, locked: boolean) => void;
   moveLayer: (fromIndex: number, toIndex: number) => void;
   setLayerName: (id: string, name: string) => void;
-
-  addAIArea: (id: string, area: { startX: number; startY: number }) => void;
-  removeAIArea: (id: string) => void;
 
   exportAnimationData: (
     onProgress: (progress: ExportProgress) => void
@@ -113,7 +111,6 @@ export const useAnimationStore = create<AnimationState>()(
         isPlaying: false,
         timer: null,
         currentTime: 0,
-        aiAreas: {},
 
         addFrame: (duplicateCurrent = false) => {
           set((state) => {
@@ -433,12 +430,10 @@ export const useAnimationStore = create<AnimationState>()(
               ? pixels
               : pixels.filter(
                   (p) =>
-                    !Object.values(state.aiAreas).some(
-                      (area) =>
-                        p.x >= area.startX &&
-                        p.x < area.startX + 16 &&
-                        p.y >= area.startY &&
-                        p.y < area.startY + 16
+                    !isPixelInActiveAIArea(
+                      p,
+                      useAIStore.getState().generations,
+                      layer?.id
                     )
                 );
             if (filteredPixels.length === 0) return state;
@@ -552,17 +547,6 @@ export const useAnimationStore = create<AnimationState>()(
             useHistoryStore.getState().push();
             return { frames: newFrames };
           });
-        },
-
-        // --- AI Area Actions ---
-        addAIArea: (id, area) => {
-          set({ aiAreas: { ...get().aiAreas, [id]: area } });
-        },
-
-        removeAIArea: (id) => {
-          const aiAreas = { ...get().aiAreas };
-          delete aiAreas[id];
-          set({ aiAreas });
         },
 
         // --- Import/Export ---

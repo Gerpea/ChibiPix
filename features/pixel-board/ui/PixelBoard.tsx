@@ -7,17 +7,18 @@ import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { Checkerboard, CheckerboardHandle } from './Checkerboard';
 import { Minimap } from './Minimap';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
-import { AiGenerationAreas } from './AiGenerationAreas/AiGenerationArea';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
 import { HighlightPixel } from './HighlightPixel';
 import { getPointerPos } from '../utils';
 import { DrawingLayers } from './DrawingLayers/DrawingLayers';
+import { useAIStore } from '@/features/ai-generation/model/aiStore';
+import { isPixelInActiveAIArea } from '@/features/ai-generation/lib/utils';
 
 export const PixelBoard: React.FC = () => {
   const currentFrame = useAnimationStore(
     (state) => state.frames[state.currentFrameIndex]
   );
-  const { aiAreas } = useAnimationStore();
+  const { generations } = useAIStore();
   const { currentTool } = useToolbarStore();
 
   const checkerboardRef = useRef<CheckerboardHandle>(null);
@@ -120,12 +121,10 @@ export const PixelBoard: React.FC = () => {
     }
     if (
       hoverPixel &&
-      Object.values(aiAreas).some(
-        (area) =>
-          hoverPixel.col >= area.startX &&
-          hoverPixel.col < area.startX + 16 &&
-          hoverPixel.row >= area.startY &&
-          hoverPixel.row < area.startY + 16
+      isPixelInActiveAIArea(
+        { x: hoverPixel.col, y: hoverPixel.row },
+        generations,
+        activeLayerId
       )
     ) {
       return 'not-allowed';
@@ -140,7 +139,7 @@ export const PixelBoard: React.FC = () => {
       default:
         return 'crosshair';
     }
-  }, [layer?.locked, currentTool, aiAreas]);
+  }, [layer?.locked, currentTool, generations, activeLayerId]);
 
   const stageStyle = useMemo(() => ({ cursor: getCursor() }), [getCursor]);
 
@@ -167,7 +166,6 @@ export const PixelBoard: React.FC = () => {
       >
         <Checkerboard ref={checkerboardRef} />
         <DrawingLayers />
-        <AiGenerationAreas />
         <HighlightPixel />
       </Stage>
       <Minimap layers={layers} />
