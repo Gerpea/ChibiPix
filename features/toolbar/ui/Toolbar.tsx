@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { SketchPicker } from 'react-color';
 import { Tool, useToolbarStore } from '../model/toolbarStore';
 import {
@@ -26,40 +26,6 @@ export const Toolbar: React.FC = () => {
     currentTool,
     setCurrentTool,
   } = useToolbarStore();
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'p':
-          setCurrentTool('pencil');
-          break;
-        case 'f':
-          setCurrentTool('fill');
-          break;
-        case 'e':
-          setCurrentTool('eraser');
-          break;
-        case 's':
-          setCurrentTool('selection-rectangle');
-          break;
-        case 'h':
-          setCurrentTool('pan');
-          break;
-        case 'z':
-          setCurrentTool('zoom');
-          break;
-        case 'x':
-          swapColors();
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [setCurrentTool, swapColors]);
 
   return (
     <div className="flex h-full flex-col items-center gap-4">
