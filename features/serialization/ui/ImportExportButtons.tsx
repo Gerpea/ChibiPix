@@ -23,7 +23,7 @@ export function ImportExportButtons() {
     setIsImporting(true);
     try {
       const text = await file.text();
-      await importAnimationData(text);
+      await importAnimationData(text, () => {});
     } catch (error) {
       console.error('Import error:', error);
     } finally {
@@ -40,7 +40,7 @@ export function ImportExportButtons() {
         onClick={() => setDialogOpen(true)}
         disabled={isImporting}
         size="icon"
-        variant="secondary"
+        variant="outline"
         className="flex items-center gap-2"
         title="Export Animation"
       >
@@ -50,7 +50,7 @@ export function ImportExportButtons() {
         onClick={handleImport}
         disabled={isImporting}
         size="icon"
-        variant="secondary"
+        variant="outline"
         className="flex items-center gap-2"
         title="Import Animation"
       >

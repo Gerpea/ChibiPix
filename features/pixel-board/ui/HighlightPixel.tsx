@@ -2,14 +2,23 @@
 
 import React, { useMemo } from 'react';
 import { Layer, Rect } from 'react-konva';
-import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { PIXEL_SIZE } from '../const';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
+import { useTheme } from 'next-themes';
 
 export const HighlightPixel: React.FC = () => {
   const { hoverPixel, pan, stage } = usePixelBoardStore();
   const { currentTool, toolSettings } = useToolbarStore();
+  const { resolvedTheme } = useTheme();
+
+  const highlightColors = useMemo(() => {
+    const isDark = resolvedTheme === 'dark';
+    return {
+      fill: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.3)',
+      stroke: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+    };
+  }, [resolvedTheme]);
 
   return (
     hoverPixel &&
@@ -34,10 +43,10 @@ export const HighlightPixel: React.FC = () => {
                   key={`${dx},${dy}`}
                   x={x}
                   y={y}
-                  width={PIXEL_SIZE * stage.scale}
-                  height={PIXEL_SIZE * stage.scale}
-                  fill="rgba(255, 255, 255, 0.3)"
-                  stroke="rgba(0, 0, 0, 0.5)"
+                  width={PIXEL_SIZE * stage.scale + 0.5}
+                  height={PIXEL_SIZE * stage.scale + 0.5}
+                  fill={highlightColors.fill}
+                  stroke={highlightColors.stroke}
                   strokeWidth={1}
                 />
               );

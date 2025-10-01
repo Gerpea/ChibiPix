@@ -1,3 +1,5 @@
+'use client';
+
 import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { Loader2Icon } from 'lucide-react';
@@ -30,7 +32,10 @@ export const GifTab: React.FC = () => {
 
   const handlePaddingChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      setPadding(parseInt(e.target.value));
+      const val = parseInt(e.target.value);
+      if (!isNaN(val)) {
+        setPadding(val);
+      }
     },
     [setPadding]
   );
@@ -61,6 +66,7 @@ export const GifTab: React.FC = () => {
         if (!blob) return null;
         if (forPreview) {
           const url = URL.createObjectURL(blob);
+          if (previewUrl) URL.revokeObjectURL(previewUrl); // Clean up old URL
           setPreviewUrl(url);
           return null;
         } else {
@@ -78,7 +84,7 @@ export const GifTab: React.FC = () => {
         }
       }
     },
-    [frames, padding, quality, backgroundColor, name]
+    [frames, padding, quality, backgroundColor, name, previewUrl]
   );
 
   const handleExport = useCallback(() => {
@@ -88,11 +94,10 @@ export const GifTab: React.FC = () => {
   useEffect(() => {
     const debouncedPreview = debounce(() => {
       generateGIF(true);
-    }, 300); // 300ms debounce
+    }, 300);
 
     debouncedPreview();
 
-    // Cleanup
     return () => {
       debouncedPreview.cancel();
     };
@@ -121,18 +126,15 @@ export const GifTab: React.FC = () => {
           />
         </div>
         <div>
+          <Label className="mb-1.5 block">Background</Label>
           <Popover>
-            <PopoverTrigger className="flex h-full flex-col gap-1.5">
-              <Label className="mt-1">Background</Label>
+            <PopoverTrigger asChild>
               <div
-                className="h-full w-full cursor-pointer rounded-sm border border-gray-300"
+                className="border-border h-9 w-full cursor-pointer rounded-md border"
                 style={{ backgroundColor: backgroundColor }}
               />
             </PopoverTrigger>
-            <PopoverContent
-              side="right"
-              className="m-0 w-full bg-transparent p-0"
-            >
+            <PopoverContent side="bottom" className="w-auto border-none p-0">
               <SketchPicker
                 color={backgroundColor}
                 disableAlpha
@@ -145,7 +147,9 @@ export const GifTab: React.FC = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <Label htmlFor="quality">Quality</Label>
+        <Label htmlFor="quality" className="mb-1">
+          Quality ({quality})
+        </Label>
         <Slider
           id="quality"
           min={1}
@@ -154,11 +158,15 @@ export const GifTab: React.FC = () => {
           onValueChange={handleQualityChange}
         />
       </div>
-      <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-sm border border-gray-300">
+      <div className="border-border bg-muted/50 flex h-full w-full items-center justify-center overflow-hidden rounded-sm border">
         {!previewUrl || isGeneratingPreview ? (
-          <Loader2Icon className="h-5 w-5 animate-spin" />
+          <Loader2Icon className="text-muted-foreground h-5 w-5 animate-spin" />
         ) : (
-          <img src={previewUrl} className="h-full w-full" />
+          <img
+            src={previewUrl}
+            alt="GIF Preview"
+            className="h-full w-full object-contain"
+          />
         )}
       </div>
       <ProgressButton

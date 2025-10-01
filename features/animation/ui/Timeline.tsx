@@ -96,27 +96,21 @@ export const Timeline: React.FC<TimelineProps> = ({ scrollContainerRef }) => {
   return (
     <div
       ref={timelineRef}
+      className="relative mb-2 h-3 cursor-pointer"
       style={{
-        height: '12px',
-        position: 'relative',
-        cursor: 'pointer',
         zIndex: 10,
         width: `${totalWidth}px`,
-        marginBottom: '8px',
       }}
       onMouseDown={handleTimelineMouseDown}
       onMouseMove={handleTimelineMouseMove}
       onMouseUp={handleTimelineMouseUp}
+      onMouseLeave={handleTimelineMouseUp}
     >
       {ticks}
       <div
+        className="bg-primary absolute top-0 bottom-0 w-0.5"
         style={{
-          position: 'absolute',
           left: `${currentTimePosition}px`,
-          top: '0',
-          bottom: '0',
-          width: '2px',
-          backgroundColor: 'red',
         }}
       />
     </div>

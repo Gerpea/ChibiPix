@@ -8,18 +8,18 @@ import { Topbar } from '@/features/topbar/ui/Topbar';
 
 export default function Home() {
   return (
-    <div className="flex h-full w-full flex-col gap-2 bg-gray-100 p-4">
+    <div className="bg-background text-foreground flex h-full w-full flex-col gap-2 p-4">
       <header className="col-span-3 w-full">
         <Topbar />
       </header>
 
       <div className="flex h-full w-full gap-2">
-        <aside className="flex h-full w-fit flex-col items-center gap-4 rounded-md bg-white p-2">
+        <aside className="flex h-full w-fit flex-col items-center gap-4">
           <Toolbar />
         </aside>
 
         <div className="flex h-full w-full flex-col gap-2">
-          <main className="flex h-full w-full items-center justify-center overflow-hidden rounded-md bg-white">
+          <main className="bg-background flex h-full w-full items-center justify-center overflow-hidden rounded-md border shadow-sm">
             <PixelBoard />
           </main>
           <AnimationPanel />

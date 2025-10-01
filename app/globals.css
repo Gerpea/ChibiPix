@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @custom-variant dark (&:is(.dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -74,6 +75,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --tool-stroke-color: rgba(25, 25, 25, 0.9);
 }
 
 .dark {
@@ -108,13 +110,59 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --tool-stroke-color: rgba(250, 250, 250, 0.9);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ======================================================================== */
+/* react-color SketchPicker Dark Theme Overrides (Comprehensive)            */
+/* ======================================================================== */
+
+/* Main component panel */
+.dark .sketch-picker {
+  background: hsl(var(--popover)) !important;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+
+/* All text labels (Hex, R, G, B, A) */
+.dark .sketch-picker label {
+  color: hsl(var(--popover-foreground)) !important;
+  text-shadow: none !important; /* Remove default text shadow */
+}
+
+/* All text input fields */
+.dark .sketch-picker input {
+  width: 100% !important; /* Fix width issue in dark mode */
+  background-color: hsl(var(--input)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  /* box-shadow: none !important; */
+  text-align: center;
+}
+
+/* Checkerboard pattern for any transparency previews.
+   This targets the main swatch, the alpha slider, and the small swatch by the hex code. */
+.dark .sketch-picker > div:nth-child(3) > div > div > div:nth-child(2) > div,
+.dark .sketch-picker > div:nth-child(1) > div {
+  background:
+    linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%) !important;
+  background-size: 10px 10px !important;
+  background-position:
+    0 0,
+    0 5px,
+    5px -5px,
+    -5px 0 !important;
 }

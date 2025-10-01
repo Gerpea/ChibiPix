@@ -23,17 +23,17 @@ export const ToolSettings: React.FC = () => {
     }
   };
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="bg-background rounded-md border p-4 shadow-sm">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-900">Tool Settings</h3>
+          <h3 className="text-foreground text-sm font-medium">Tool Settings</h3>
         </div>
 
         <div className="flex w-full flex-col gap-2">
           <div className="flex w-full justify-between">
             <span className="text-sm">Size</span>
             {(currentTool === 'pencil' || currentTool === 'eraser') && (
-              <span className="text-sm text-gray-500">
+              <span className="text-muted-foreground text-sm">
                 {toolSettings[currentTool].size}px
               </span>
             )}
@@ -60,7 +60,7 @@ export const ToolSettings: React.FC = () => {
             {(currentTool === 'pencil' ||
               currentTool === 'eraser' ||
               currentTool === 'fill') && (
-              <span className="text-sm text-gray-500">
+              <span className="text-muted-foreground text-sm">
                 {toolSettings[currentTool].opacity}
               </span>
             )}

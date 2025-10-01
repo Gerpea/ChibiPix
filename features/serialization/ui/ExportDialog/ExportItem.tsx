@@ -30,13 +30,13 @@ export const ExportItem: React.FC<FrameItemProps> = ({ frame }) => {
   return (
     <div
       onClick={handleToggle}
-      className={`relative flex h-16 w-16 cursor-pointer overflow-hidden rounded-sm border bg-transparent`}
+      className={`group bg-background hover:border-primary relative flex h-16 w-16 cursor-pointer overflow-hidden rounded-sm border transition-colors`}
     >
       <ExportPreview frame={frame} padding={padding} />
       {isSelected ? (
-        <SquareCheckIcon className="absolute top-0 right-0 h-4 w-4" />
+        <SquareCheckIcon className="fill-primary text-primary-foreground absolute top-1 right-1 h-4 w-4" />
       ) : (
-        <SquareIcon className="absolute top-0 right-0 h-4 w-4" />
+        <SquareIcon className="text-muted-foreground group-hover:text-foreground absolute top-1 right-1 h-4 w-4" />
       )}
     </div>
   );

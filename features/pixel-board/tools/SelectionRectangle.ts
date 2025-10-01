@@ -338,7 +338,10 @@ export class SelectionRectangleTool implements Tool {
     ctx.setLineDash([6, 3]);
     ctx.lineDashOffset = this.dashOffset;
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    const newColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--tool-stroke-color')
+      .trim();
+    ctx.strokeStyle = newColor;
 
     const minCol = Math.min(this.startCol, this.endCol);
     const minRow = Math.min(this.startRow, this.endRow);
@@ -389,7 +392,10 @@ export class SelectionRectangleTool implements Tool {
     ctx.setLineDash([6, 3]);
     ctx.lineDashOffset = this.dashOffset;
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    const newColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--tool-stroke-color')
+      .trim();
+    ctx.strokeStyle = newColor;
     const minCol = Math.min(this.startCol, this.endCol);
     const minRow = Math.min(this.startRow, this.endRow);
     const width =
@@ -441,7 +447,10 @@ export class SelectionRectangleTool implements Tool {
 
     ctx.setLineDash([6, 3]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    const newColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--tool-stroke-color')
+      .trim();
+    ctx.strokeStyle = newColor;
     const minCol = this.selectionOriginCol + dx;
     const minRow = this.selectionOriginRow + dy;
     const width =

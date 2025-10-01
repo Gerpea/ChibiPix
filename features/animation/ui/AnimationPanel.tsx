@@ -95,13 +95,13 @@ export const AnimationPanel: React.FC = () => {
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="rounded-md border border-gray-200 bg-white p-4 shadow-sm"
+      className="bg-background rounded-md border p-4 shadow-sm"
     >
       <div className="flex flex-col">
         <div className="flex items-center justify-between">
           <CollapsibleTrigger asChild>
-            <div className="flex w-full items-center">
-              <h3 className="text-sm font-medium text-gray-900">Animation</h3>
+            <div className="flex w-full cursor-pointer items-center">
+              <h3 className="text-foreground text-sm font-medium">Animation</h3>
               {isOpen ? (
                 <ChevronUpIcon className="ml-auto h-4 w-4" />
               ) : (
@@ -120,7 +120,7 @@ export const AnimationPanel: React.FC = () => {
             <Frames scrollContainerRef={scrollRef} />
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <div className="mt-3 flex justify-between gap-2 border-t border-gray-200 pt-2">
+          <div className="border-border mt-3 flex justify-between gap-2 border-t pt-2">
             <div>
               <Input
                 type="number"

@@ -28,50 +28,46 @@ export const Toolbar: React.FC = () => {
   } = useToolbarStore();
 
   return (
-    <div className="flex h-full flex-col items-center gap-4">
+    <div className="bg-background flex h-full flex-col items-center gap-4 rounded-md border p-2 shadow-sm">
       <ToggleGroup
         type="single"
         value={currentTool}
-        onValueChange={(value: Tool) => setCurrentTool(value)}
+        onValueChange={(value: Tool) => value && setCurrentTool(value)}
         className="flex flex-col gap-2"
-        unselectable="off"
       >
         <ToggleGroupItem value="pencil" title="Pencil (P)">
-          <PencilIcon />
+          <PencilIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem value="fill" title="Fill (F)">
-          <DropletIcon />
+          <DropletIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem value="eraser" title="Eraser (E)">
-          <EraserIcon />
+          <EraserIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem
           value="selection-rectangle"
           title="Selection Rectangle (S)"
         >
-          <SquareDashedIcon />
+          <SquareDashedIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem value="pan" title="Pan (H)">
-          <MoveIcon />
+          <MoveIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem value="zoom" title="Zoom (Z)">
-          <ZoomInIcon />
+          <ZoomInIcon className="h-4 w-4" />
         </ToggleGroupItem>
       </ToggleGroup>
 
       <div className="relative mt-auto flex flex-col items-center gap-2">
-        <div className="relative flex gap-1">
+        <div className="relative flex flex-col items-center justify-center gap-1">
           <Popover>
-            <PopoverTrigger>
+            <PopoverTrigger asChild>
               <div
-                className="relative h-4 w-4 cursor-pointer border border-gray-300"
+                className="border-border relative h-6 w-6 cursor-pointer rounded-sm border-2"
                 style={{ backgroundColor: primaryColor }}
               />
             </PopoverTrigger>
-            <PopoverContent
-              side="right"
-              className="m-0 w-full bg-transparent p-0"
-            >
+            <PopoverContent side="right" className="w-auto border-none p-0">
               <SketchPicker
                 color={primaryColor}
                 onChange={(color) =>
@@ -80,34 +76,7 @@ export const Toolbar: React.FC = () => {
                       color.rgb.r,
                       color.rgb.g,
                       color.rgb.b,
-                      color.rgb.a || 0
-                    )
-                  )
-                }
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger>
-              <div
-                className="relative h-4 w-4 cursor-pointer border border-gray-300"
-                style={{ backgroundColor: secondaryColor }}
-              />
-            </PopoverTrigger>
-            <PopoverContent
-              side="right"
-              className="m-0 w-full bg-transparent p-0"
-            >
-              <SketchPicker
-                color={secondaryColor}
-                onChange={(color) =>
-                  setSecondaryColor(
-                    rgbaToHex(
-                      color.rgb.r,
-                      color.rgb.g,
-                      color.rgb.b,
-                      color.rgb.a || 0
+                      color.rgb.a ?? 1
                     )
                   )
                 }
@@ -117,11 +86,35 @@ export const Toolbar: React.FC = () => {
 
           <button
             onClick={swapColors}
-            className="absolute -top-4 left-1/2 z-10 m-0 flex h-fit w-fit -translate-x-1/2 cursor-pointer items-center justify-center p-0"
+            className="text-foreground flex h-fit w-fit cursor-pointer items-center justify-center p-0"
             title="Swap colors (X)"
           >
             <Repeat2Icon className="h-4 w-4" />
           </button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <div
+                className="border-border relative h-6 w-6 cursor-pointer rounded-sm border-2"
+                style={{ backgroundColor: secondaryColor }}
+              />
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-auto border-none p-0">
+              <SketchPicker
+                color={secondaryColor}
+                onChange={(color) =>
+                  setSecondaryColor(
+                    rgbaToHex(
+                      color.rgb.r,
+                      color.rgb.g,
+                      color.rgb.b,
+                      color.rgb.a ?? 1
+                    )
+                  )
+                }
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </div>

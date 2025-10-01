@@ -1,6 +1,9 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
-import { Layer } from '../model/animationStore';
+import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
+import { useTheme } from 'next-themes';
 
 interface FramePreviewProps {
   frame: { id: string; name: string; layers: Layer[]; duration: number };
@@ -8,6 +11,7 @@ interface FramePreviewProps {
 
 export const FramePreview: React.FC<FramePreviewProps> = ({ frame }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { resolvedTheme } = useTheme(); // Hook to get the current theme
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -23,6 +27,7 @@ export const FramePreview: React.FC<FramePreviewProps> = ({ frame }) => {
       maxX = -Infinity,
       minY = Infinity,
       maxY = -Infinity;
+
     frame.layers.forEach((layer) => {
       if (!layer.visible) return;
       if (layer.pixels.size > 0) {
@@ -35,6 +40,14 @@ export const FramePreview: React.FC<FramePreviewProps> = ({ frame }) => {
         }
       }
     });
+
+    // Handle frames with no pixels
+    if (minX === Infinity) {
+      minX = 0;
+      maxX = 0;
+      minY = 0;
+      maxY = 0;
+    }
 
     const effectiveWidth = Math.max(1, maxX - minX + 1);
     const effectiveHeight = Math.max(1, maxY - minY + 1);
@@ -52,16 +65,25 @@ export const FramePreview: React.FC<FramePreviewProps> = ({ frame }) => {
     const offsetX = (previewSize - scaledWidth) / 2;
     const offsetY = (previewSize - scaledHeight) / 2;
 
+    // --- Theme-aware color changes start here ---
+
+    const isDark = resolvedTheme === 'dark';
+
+    // Same colors as the main canvas and other previews
+    const color1 = isDark ? '#616161' : '#e0e0e0';
+    const color2 = isDark ? '#424242' : '#c7c7c7';
+
     const checkerSize = pixelSize * 4;
     for (let y = 0; y < canvas.height; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
         ctx.fillStyle =
           (Math.floor(x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0
-            ? '#fff'
-            : '#ccc';
+            ? color1
+            : color2;
         ctx.fillRect(x, y, checkerSize, checkerSize);
       }
     }
+    // --- Theme-aware color changes end here ---
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
@@ -73,17 +95,24 @@ export const FramePreview: React.FC<FramePreviewProps> = ({ frame }) => {
         const [x, y] = key.split(',').map(Number);
         const adjustedX = (x - minX) * pixelSize;
         const adjustedY = (y - minY) * pixelSize;
-        ctx.fillStyle = intToHex(color);
-        ctx.fillRect(adjustedX, adjustedY, pixelSize + 0.1, pixelSize + 0.1);
+        const hexColor = intToHex(color);
+        if (hexColor !== 'transparent') {
+          ctx.fillStyle = hexColor;
+          ctx.fillRect(adjustedX, adjustedY, pixelSize + 0.1, pixelSize + 0.1);
+        }
       }
     });
 
     ctx.restore();
-  }, [frame.layers]);
+    // Add resolvedTheme to the dependency array to trigger redraws on theme change
+  }, [frame.layers, resolvedTheme]);
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <canvas ref={canvasRef} className="h-6 w-6 rounded-md" />
+      <canvas
+        ref={canvasRef}
+        className="border-border h-6 w-6 rounded-md border"
+      />
     </div>
   );
 };

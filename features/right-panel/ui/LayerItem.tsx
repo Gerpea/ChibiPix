@@ -65,29 +65,25 @@ export const LayerItem: React.FC<LayerItemProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`relative flex items-center gap-2 overflow-hidden rounded border bg-gray-100 p-2 ${active ? 'border-gray-500 bg-blue-100' : 'border-gray-200'}`}
+      className={`bg-muted relative flex items-center gap-2 overflow-hidden rounded border p-2 ${active ? 'border-primary bg-primary/10' : 'border-border'}`}
       onClick={() => setActiveLayer(layer.id)}
     >
       <div className="flex">
-        {layer.visible ? (
-          <Button
-            size="small-icon"
-            variant="ghost"
-            className="cursor-pointer"
-            onClick={() => toggleLayerVisibility(layer.id)}
-          >
+        <Button
+          size="small-icon"
+          variant="ghost"
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleLayerVisibility(layer.id);
+          }}
+        >
+          {layer.visible ? (
             <EyeIcon className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button
-            size="small-icon"
-            variant="ghost"
-            className="cursor-pointer"
-            onClick={() => toggleLayerVisibility(layer.id)}
-          >
+          ) : (
             <EyeOffIcon className="h-4 w-4" />
-          </Button>
-        )}
+          )}
+        </Button>
       </div>
 
       <LayerPreview layer={layer} />
@@ -107,12 +103,16 @@ export const LayerItem: React.FC<LayerItemProps> = ({
                   setIsEditing(false);
                 }
               }}
-              className="h-4 w-full px-0.5 py-0.5 text-sm"
+              className="h-4 w-full bg-transparent px-0.5 py-0.5 text-sm"
+              onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <span
               className="w-full cursor-pointer text-xs select-none"
-              onDoubleClick={() => setIsEditing(true)}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+              }}
             >
               {layer.name.length > 21
                 ? layer.name.slice(0, 21) + '…'
@@ -120,27 +120,29 @@ export const LayerItem: React.FC<LayerItemProps> = ({
             </span>
           )}
           <div className="flex">
-            {layer.locked ? (
-              <Button
-                size="small-icon"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={() => toggleLayerLock(layer.id)}
-              >
+            <Button
+              size="small-icon"
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLayerLock(layer.id);
+              }}
+            >
+              {layer.locked ? (
                 <LockIcon className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                size="small-icon"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={() => toggleLayerLock(layer.id)}
-              >
+              ) : (
                 <LockOpenIcon className="h-4 w-4" />
-              </Button>
-            )}
+              )}
+            </Button>
           </div>
-          <GripIcon {...listeners} className="ml-auto h-4 w-4 cursor-grab" />
+          <div
+            {...listeners}
+            className="ml-auto cursor-grab"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripIcon className="text-muted-foreground h-4 w-4" />
+          </div>
         </div>
       </div>
     </div>

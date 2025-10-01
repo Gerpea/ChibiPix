@@ -1,12 +1,17 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
+import { useTheme } from 'next-themes';
 
 interface LayerPreviewProps {
   layer: Layer;
 }
+
 export const LayerPreview: React.FC<LayerPreviewProps> = ({ layer }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { resolvedTheme } = useTheme(); // Hook to get the current theme
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -56,16 +61,25 @@ export const LayerPreview: React.FC<LayerPreviewProps> = ({ layer }) => {
     const offsetX = (previewSize - scaledWidth) / 2;
     const offsetY = (previewSize - scaledHeight) / 2;
 
+    // --- Theme-aware color changes start here ---
+
+    const isDark = resolvedTheme === 'dark';
+
+    // Same colors as the main checkerboard for consistency
+    const color1 = isDark ? '#616161' : '#e0e0e0';
+    const color2 = isDark ? '#424242' : '#c7c7c7';
+
     const checkerSize = pixelSize * 4;
     for (let y = 0; y < canvas.height; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
         ctx.fillStyle =
           (Math.floor(x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0
-            ? '#fff'
-            : '#ccc';
+            ? color1
+            : color2;
         ctx.fillRect(x, y, checkerSize, checkerSize);
       }
     }
+    // --- Theme-aware color changes end here ---
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
@@ -75,16 +89,23 @@ export const LayerPreview: React.FC<LayerPreviewProps> = ({ layer }) => {
       const [x, y] = key.split(',').map(Number);
       const adjustedX = (x - minX) * pixelSize;
       const adjustedY = (y - minY) * pixelSize;
-      ctx.fillStyle = intToHex(color);
-      ctx.fillRect(adjustedX, adjustedY, pixelSize + 0.1, pixelSize + 0.1);
+      const hexColor = intToHex(color);
+      if (hexColor !== 'transparent') {
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(adjustedX, adjustedY, pixelSize + 0.1, pixelSize + 0.1);
+      }
     }
 
     ctx.restore();
-  }, [layer.pixels]);
+    // Redraw the canvas whenever the layer's pixels or the theme changes
+  }, [layer.pixels, resolvedTheme]);
 
   return (
     <div className="relative">
-      <canvas ref={canvasRef} className={`h-8 w-8 rounded-md`} />
+      <canvas
+        ref={canvasRef}
+        className="border-border h-8 w-8 rounded-md border"
+      />
     </div>
   );
 };

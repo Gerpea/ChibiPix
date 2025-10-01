@@ -1,3 +1,5 @@
+'use client';
+
 import React, {
   useEffect,
   useRef,
@@ -9,6 +11,7 @@ import { Image, Layer } from 'react-konva';
 import Konva from 'konva';
 import { PIXEL_SIZE } from '../const';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
+import { useTheme } from 'next-themes';
 
 type DrawCheckboardOptions = {
   startY: number;
@@ -25,7 +28,11 @@ type DrawCheckboardOptions = {
 
 function drawCheckerboard(
   ctx: CanvasRenderingContext2D,
-  {
+  options: DrawCheckboardOptions,
+  color1: string,
+  color2: string
+) {
+  const {
     startY,
     startX,
     maxWorldY,
@@ -36,8 +43,8 @@ function drawCheckerboard(
     stageHeight,
     stageWidth,
     checkerSizeScreen,
-  }: DrawCheckboardOptions
-) {
+  } = options;
+
   let currentWorldY = startY;
   while (currentWorldY < maxWorldY) {
     const canvasY = (currentWorldY - minWorldY) * stageScale;
@@ -61,8 +68,8 @@ function drawCheckerboard(
           Math.floor(currentWorldY / PIXEL_SIZE)) %
           2 ===
         0
-          ? '#ffffff'
-          : '#cecece';
+          ? color1
+          : color2;
       ctx.fillRect(
         Math.floor(canvasX),
         Math.floor(canvasY),
@@ -84,14 +91,18 @@ export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const imageRef = useRef<Konva.Image | null>(null);
   const { stage, pan } = usePixelBoardStore();
+  const { resolvedTheme } = useTheme(); // Hook to get the current theme
 
+  // Use a ref to hold latest props to avoid re-creating redraw callback frequently
   const propsRef = useRef({
     stageWidth: stage.width,
     stageHeight: stage.height,
     panWorldX: pan.x,
     panWorldY: pan.y,
     stageScale: stage.scale,
+    theme: resolvedTheme,
   });
+
   useEffect(() => {
     propsRef.current = {
       stageWidth: stage.width,
@@ -99,11 +110,12 @@ export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
       panWorldX: pan.x,
       panWorldY: pan.y,
       stageScale: stage.scale,
+      theme: resolvedTheme,
     };
-  }, [stage, pan]);
+  }, [stage, pan, resolvedTheme]);
 
   const redraw = useCallback(() => {
-    const { stageWidth, stageHeight, panWorldX, panWorldY, stageScale } =
+    const { stageWidth, stageHeight, panWorldX, panWorldY, stageScale, theme } =
       propsRef.current;
 
     const canvas = canvasRef.current;
@@ -111,7 +123,6 @@ export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
     if (!ctx) return;
 
     ctx.imageSmoothingEnabled = false;
-    ctx.imageSmoothingQuality = 'low';
 
     if (canvas.width !== stageWidth || canvas.height !== stageHeight) {
       canvas.width = stageWidth;
@@ -127,19 +138,34 @@ export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
     const startY = Math.floor(minWorldY / PIXEL_SIZE) * PIXEL_SIZE;
     const checkerSizeScreen = Math.ceil(PIXEL_SIZE * stageScale);
 
+    // Define colors based on the current theme
+    const isDark = theme === 'dark';
+    const lightColor1 = '#e0e0e0';
+    const lightColor2 = '#c7c7c7';
+    const darkColor1 = '#616161';
+    const darkColor2 = '#424242';
+
+    const color1 = isDark ? darkColor1 : lightColor1;
+    const color2 = isDark ? darkColor2 : lightColor2;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawCheckerboard(ctx, {
-      checkerSizeScreen,
-      maxWorldX,
-      maxWorldY,
-      minWorldX,
-      minWorldY,
-      stageHeight,
-      stageScale,
-      stageWidth,
-      startX,
-      startY,
-    });
+    drawCheckerboard(
+      ctx,
+      {
+        checkerSizeScreen,
+        maxWorldX,
+        maxWorldY,
+        minWorldX,
+        minWorldY,
+        stageHeight,
+        stageScale,
+        stageWidth,
+        startX,
+        startY,
+      },
+      color1,
+      color2
+    );
 
     if (imageRef.current) {
       imageRef.current.image(canvas);
@@ -157,7 +183,7 @@ export const Checkerboard = forwardRef<CheckerboardHandle>((_, ref) => {
 
   useEffect(() => {
     redraw();
-  }, [redraw]);
+  }, [redraw, resolvedTheme]);
 
   return (
     <Layer listening={false}>

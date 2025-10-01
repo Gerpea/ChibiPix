@@ -119,14 +119,17 @@ export const FrameItem: React.FC<FrameItemProps> = ({
       ref={setNodeRef}
       onClick={handleSelect}
       style={style}
-      className={`relative flex items-start rounded-md rounded-t-none border bg-gray-100 p-2 ${active ? 'border-gray-500' : 'border-gray-200'} overflow-hidden`}
+      className={`bg-muted relative flex items-start overflow-hidden rounded-md rounded-t-none border p-2 ${active ? 'border-primary' : 'border-border'}`}
     >
       <div className="flex flex-col items-center gap-2">
-        <GripHorizontalIcon {...listeners} className="h-4 w-4 cursor-grab" />
+        <GripHorizontalIcon
+          {...listeners}
+          className="text-muted-foreground h-4 w-4 cursor-grab"
+        />
         <FramePreview frame={frame} />
       </div>
       <div
-        className="absolute top-0 right-0 bottom-0 w-2 cursor-col-resize bg-gray-500/30 hover:bg-gray-500"
+        className="bg-muted-foreground/30 hover:bg-muted-foreground absolute top-0 right-0 bottom-0 w-2 cursor-col-resize"
         onMouseDown={handleResizeStart}
       />
     </div>

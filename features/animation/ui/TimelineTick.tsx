@@ -13,34 +13,19 @@ export const TimelineTick: React.FC<TimelineTickProps> = ({
 }) => {
   return type == 'minor' ? (
     <div
-      style={{
-        position: 'absolute',
-        left: `${pos}px`,
-        top: '0',
-        width: '1px',
-        height: '6px',
-        backgroundColor: '#666',
-      }}
+      className="bg-muted-foreground absolute top-0 h-[6px] w-px"
+      style={{ left: `${pos}px` }}
     />
   ) : (
     <>
       <div
-        style={{
-          position: 'absolute',
-          left: `${pos}px`,
-          top: '0',
-          width: '1px',
-          height: '12px',
-          backgroundColor: '#333',
-        }}
+        className="bg-foreground absolute top-0 h-3 w-px"
+        style={{ left: `${pos}px` }}
       />
       <span
+        className="text-foreground absolute top-[-3px] text-[10px]"
         style={{
-          position: 'absolute' as const,
           left: `${pos + (idx === 0 ? 4 : 22)}px`,
-          top: '-3px',
-          fontSize: '10px',
-          color: '#333',
           transform: idx === 0 ? 'none' : 'translateX(-100%)',
         }}
       >
