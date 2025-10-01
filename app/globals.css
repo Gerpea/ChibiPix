@@ -166,3 +166,58 @@
     5px -5px,
     -5px 0 !important;
 }
+
+/* ======================================================================== */
+/* react-color ChromePicker Dark Theme Overrides                            */
+/* ======================================================================== */
+
+/* Main component body */
+.dark .chrome-picker {
+  background: hsl(var(--card)) !important;
+  box-shadow: none !important;
+}
+
+/* All text labels and input values */
+.dark .chrome-picker span,
+.dark .chrome-picker input {
+  color: hsl(var(--card-foreground)) !important;
+  text-shadow: none !important; /* Remove default text shadow */
+}
+
+/* Input fields specifically */
+.dark .chrome-picker input {
+  background-color: hsl(var(--input)) !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+
+/* The toggle icon for switching between RGB/HSL etc. */
+.dark .chrome-picker svg {
+  fill: hsl(var(--card-foreground)) !important;
+}
+
+/* Transparency checkerboard for the alpha slider */
+.dark
+  .chrome-picker
+  > div:nth-child(2)
+  > div:nth-child(2)
+  > div:nth-child(1)
+  > div
+  > div {
+  background:
+    linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%) !important;
+  background-size: 10px 10px !important;
+  background-position:
+    0 0,
+    0 5px,
+    5px -5px,
+    -5px 0 !important;
+}
+
+.chrome-picker > div:nth-child(2) > div:nth-child(2) {
+  display: none !important;
+}

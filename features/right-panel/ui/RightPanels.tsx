@@ -8,8 +8,8 @@ import { ToolSettings } from './ToolSettings';
 export const RightPanel: React.FC = () => {
   return (
     <div className="flex h-full flex-col gap-4">
-      <LayerPanel />
       <ToolSettings />
+      <LayerPanel />
       <AIPromptInput />
     </div>
   );
