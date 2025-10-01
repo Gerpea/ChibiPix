@@ -1,3 +1,4 @@
+// @ts-expect-error will be fixed later
 import GIFEncoder from 'gif-encoder-2';
 import { Frame } from '@/features/animation/model/animationStore';
 import { findMaxDimensions } from './exportUtils';

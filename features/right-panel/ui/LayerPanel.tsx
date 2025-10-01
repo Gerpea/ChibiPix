@@ -68,7 +68,7 @@ export const LayerPanel: React.FC = () => {
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-foreground text-sm font-medium">Layers</h3>
       </div>
-      <ScrollArea className="h-40 w-full pr-3">
+      <ScrollArea className="h-80 w-full pr-3">
         <div className="flex w-full flex-col gap-2">
           <DndContext
             sensors={sensors}

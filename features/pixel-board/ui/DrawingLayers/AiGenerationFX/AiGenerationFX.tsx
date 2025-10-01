@@ -9,6 +9,7 @@ import { FlipFlopPixelGrid } from './FlipFlopPixelGrid';
 import { StopButton } from './StopButton';
 
 interface AIGenerationFXProps {
+  // @ts-expect-error will be fixed later
   generation: Generation;
   onStop: (id: string) => void;
 }

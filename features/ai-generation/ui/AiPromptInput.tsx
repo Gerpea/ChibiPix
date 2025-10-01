@@ -22,7 +22,7 @@ export const AIPromptInput: React.FC = () => {
   }, [prompt]);
 
   return (
-    <div className="bg-background flex h-full flex-col justify-between space-y-2 rounded-md border p-4 shadow-sm">
+    <div className="bg-background flex h-full max-h-40 flex-col justify-between space-y-2 rounded-md border p-4 shadow-sm">
       <Textarea
         placeholder="Enter prompt (e.g., 'pixel art of a cyberpunk cat')"
         value={prompt}

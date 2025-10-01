@@ -90,6 +90,7 @@ export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
     <Group x={x} y={y}>
       <KonvaImage
         ref={imageRef}
+        image={undefined}
         x={0}
         y={0}
         width={width / stage.scale}

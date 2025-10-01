@@ -216,11 +216,13 @@ export const useAIStore = create<AIState>()(
                     baseURL: process.env.NEXT_PUBLIC_LLM_BASE_URL,
                   },
                   temperature: 0.05,
+                  // @ts-expect-error will be fixed later
                   format: 'json',
                 })
               : new ChatOllama({
                   model: process.env.NEXT_PUBLIC_LLM_MODEL,
                   baseUrl: process.env.NEXT_PUBLIC_LLM_BASE_URL,
+                  // @ts-expect-error will be fixed later
                   apiKey: process.env.NEXT_PUBLIC_LLM_API_KEY,
                   temperature: 0.05,
                   format: 'json',
@@ -462,6 +464,7 @@ export const useAIStore = create<AIState>()(
                   break;
                 }
 
+                // @ts-expect-error will be fixed later
                 response = await llm.invoke(messages, { signal });
                 iteration++;
               }

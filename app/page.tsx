@@ -25,7 +25,7 @@ export default function Home() {
           <AnimationPanel />
         </div>
 
-        <aside className="flex w-80 max-w-80 min-w-80 flex-col gap-4">
+        <aside className="flex w-72 max-w-72 min-w-72 flex-col gap-4">
           <RightPanel />
         </aside>
       </div>

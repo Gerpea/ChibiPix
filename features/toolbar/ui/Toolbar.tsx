@@ -41,7 +41,11 @@ export const Toolbar: React.FC = () => {
         <ToggleGroupItem value="fill" title="Fill (F)">
           <DropletIcon className="h-4 w-4" />
         </ToggleGroupItem>
-        <ToggleGroupItem value="eraser" title="Eraser (E)">
+        <ToggleGroupItem
+          value="eraser"
+          title="Eraser (E)"
+          data-testid="eraser-tool"
+        >
           <EraserIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem
@@ -64,6 +68,7 @@ export const Toolbar: React.FC = () => {
             <PopoverTrigger asChild>
               <div
                 className="border-border relative h-6 w-6 cursor-pointer rounded-sm border-2"
+                data-testid="primary-color-trigger"
                 style={{ backgroundColor: primaryColor }}
               />
             </PopoverTrigger>

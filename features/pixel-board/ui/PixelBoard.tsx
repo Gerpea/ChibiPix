@@ -154,6 +154,7 @@ export const PixelBoard: React.FC = () => {
   return (
     <div
       className="relative m-0 flex h-full max-h-full w-full max-w-full touch-none items-center justify-center overflow-hidden p-0"
+      data-testid="main-canvas-wrapper"
       ref={parentRef}
     >
       <Stage
