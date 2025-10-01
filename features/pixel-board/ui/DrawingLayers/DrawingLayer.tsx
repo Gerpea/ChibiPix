@@ -15,6 +15,7 @@ import { useAnimationStore } from '@/features/animation/model/animationStore';
 import {
   useToolbarStore,
   Tool as StoreTool,
+  TOOLS,
 } from '@/features/toolbar/model/toolbarStore';
 import { hexToInt, intToHex } from '@/shared/utils/colors';
 import { PIXEL_SIZE } from '../../const';
@@ -28,15 +29,21 @@ import { withPan } from '../../tools/wrappers/PanWrapper';
 import { EraserTool } from '../../tools/Eraser';
 import { withZoom } from '../../tools/wrappers/ZoomWrapper';
 import { AIGenerationFX } from './AiGenerationFX/AiGenerationFX';
+import { SelectionRectangleTool } from '../../tools/SelectionRectangle';
 
-function getTool(currentTool: StoreTool, ctx: ToolContext): Tool | undefined {
+function createTool(
+  currentTool: StoreTool,
+  ctx: ToolContext
+): Tool | undefined {
   switch (currentTool) {
     case 'pencil':
       return new (withZoom(withPan(PencilTool)))(ctx);
     case 'fill':
-      return new (withPan(FillTool))(ctx);
+      return new (withZoom(withPan(FillTool)))(ctx);
     case 'eraser':
-      return new (withPan(EraserTool))(ctx);
+      return new (withZoom(withPan(EraserTool)))(ctx);
+    case 'selection-rectangle':
+      return new (withZoom(withPan(SelectionRectangleTool)))(ctx);
     case 'pan':
       return new (withZoom(PanTool))(ctx);
     case 'zoom':
@@ -61,7 +68,9 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<Konva.Image>(null);
-    const tool = useRef<Tool | undefined>(null);
+    const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+    const overlayImageRef = useRef<Konva.Image>(null);
+    const tools = useRef<Map<string, Tool>>(new Map());
 
     const layers = useMemo(() => currentFrame?.layers ?? [], [currentFrame]);
     const layer = useMemo(() => layers.find((l) => l.id === id), [layers, id]);
@@ -150,48 +159,84 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
         canvas = document.createElement('canvas');
         canvasRef.current = canvas;
       }
+      if (!overlayCanvasRef.current) {
+        const oc = document.createElement('canvas');
+        overlayCanvasRef.current = oc;
+      }
+      const oc = overlayCanvasRef.current!;
       if (canvas.width !== stage.width || canvas.height !== stage.height) {
         canvas.width = stage.width;
         canvas.height = stage.height;
       }
+      if (oc.width !== stage.width || oc.height !== stage.height) {
+        oc.width = stage.width;
+        oc.height = stage.height;
+      }
+
       redraw();
     }, [id, stage.width, stage.height, currentFrame]);
+
+    useEffect(() => {
+      return () => {
+        tools.current.forEach((tool) => tool.destroy?.());
+      };
+    }, []);
+
+    const getTool = useCallback(
+      (toolName: StoreTool) => {
+        let tool = tools.current.get(toolName);
+        if (!tool) {
+          const ctx = canvasRef.current?.getContext('2d');
+          const overlayCtx = overlayCanvasRef.current?.getContext('2d');
+          if (
+            !ctx ||
+            !overlayCtx ||
+            !imageRef.current ||
+            !overlayImageRef.current
+          )
+            return;
+          const toolInstance = createTool(toolName as StoreTool, {
+            ctx: ctx,
+            overlayCtx: overlayCtx,
+            image: imageRef.current,
+            overlayImage: overlayImageRef.current,
+          });
+          if (!toolInstance) return;
+          tools.current.set(toolName, toolInstance);
+          tool = toolInstance;
+        }
+        return tool;
+      },
+      [id, currentFrame]
+    );
 
     useImperativeHandle(
       ref,
       () => ({
         onMouseDown(row, col, e) {
-          if (tool.current) return;
-          if (!imageRef.current) return;
-          const ctx = canvasRef.current?.getContext('2d');
-          if (!ctx) return;
-          tool.current = getTool(currentTool, {
-            ctx: ctx,
-            image: imageRef.current,
-          });
-          tool.current?.onMouseDown(row, col, e);
+          const tool = getTool(currentTool);
+          if (!tool) return;
+          tool.onMouseDown(row, col, e);
         },
         onMouseMove(row, col, e) {
-          tool.current?.onMouseMove(row, col, e);
+          const tool = getTool(currentTool);
+          if (!tool) return;
+          tool.onMouseMove(row, col, e);
         },
         onMouseUp(row, col, e) {
-          tool.current?.onMouseUp(row, col, e);
-          tool.current = null;
+          const tool = getTool(currentTool);
+          if (!tool) return;
+          tool.onMouseUp(row, col, e);
         },
         onWheel(row, col, e) {
-          if (!imageRef.current) return;
-          const ctx = canvasRef.current?.getContext('2d');
-          if (!ctx) return;
-          tool.current = getTool(currentTool, {
-            ctx: ctx,
-            image: imageRef.current,
-          });
-          tool.current?.onWheel(row, col, e);
-          tool.current = null;
+          const tool = getTool(currentTool);
+          if (!tool) return;
+          tool.onWheel(row, col, e);
         },
         onMouseLeave(e) {
-          tool.current?.onMouseLeave(e);
-          tool.current = null;
+          const tool = getTool(currentTool);
+          if (!tool) return;
+          tool.onMouseLeave(e);
         },
       }),
       [currentTool]
@@ -216,6 +261,16 @@ export const DrawingLayer = forwardRef<DrawingLayerHandle, DrawingLayerProps>(
               onStop={stopGeneration}
             />
           )}
+          <KonvaImage
+            ref={overlayImageRef}
+            image={overlayCanvasRef.current ?? undefined}
+            width={stage.width}
+            height={stage.height}
+            x={0}
+            y={0}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
         </>
       )
     );

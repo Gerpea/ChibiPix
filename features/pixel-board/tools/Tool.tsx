@@ -5,6 +5,8 @@ export type ToolConstructor = new (ctx: ToolContext) => Tool;
 export interface ToolContext {
   ctx: CanvasRenderingContext2D;
   image: Konva.Image;
+  overlayCtx: CanvasRenderingContext2D;
+  overlayImage: Konva.Image;
 }
 
 export interface Tool {
@@ -29,4 +31,5 @@ export interface Tool {
     e: Konva.KonvaEventObject<WheelEvent>
   ): void;
   onMouseLeave(e: Konva.KonvaEventObject<MouseEvent>): void;
+  destroy?(): void;
 }

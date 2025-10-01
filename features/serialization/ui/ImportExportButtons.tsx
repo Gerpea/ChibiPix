@@ -23,9 +23,7 @@ export function ImportExportButtons() {
     setIsImporting(true);
     try {
       const text = await file.text();
-      await importAnimationData(text, (progress) => {
-        console.log('Import progress:', progress);
-      });
+      await importAnimationData(text);
     } catch (error) {
       console.error('Import error:', error);
     } finally {

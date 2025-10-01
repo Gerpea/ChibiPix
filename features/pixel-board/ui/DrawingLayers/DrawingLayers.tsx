@@ -48,7 +48,7 @@ export const DrawingLayers: React.FC = () => {
         layerRefs.current.get(activeLayerId)?.onMouseUp(pos.row, pos.col, e);
       }
     },
-    [activeLayerId]
+    [activeLayerId, stage, pan]
   );
 
   const handleMouseLeave = useCallback(
@@ -65,7 +65,7 @@ export const DrawingLayers: React.FC = () => {
         layerRefs.current.get(activeLayerId)?.onWheel(pos.row, pos.col, e);
       }
     },
-    [activeLayerId]
+    [activeLayerId, stage, pan]
   );
 
   return (

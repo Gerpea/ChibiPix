@@ -10,6 +10,7 @@ import {
   Repeat2Icon,
   MoveIcon,
   ZoomInIcon,
+  SquareDashedIcon,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
@@ -37,6 +38,9 @@ export const Toolbar: React.FC = () => {
           break;
         case 'e':
           setCurrentTool('eraser');
+          break;
+        case 's':
+          setCurrentTool('selection-rectangle');
           break;
         case 'h':
           setCurrentTool('pan');
@@ -74,6 +78,12 @@ export const Toolbar: React.FC = () => {
         </ToggleGroupItem>
         <ToggleGroupItem value="eraser" title="Eraser (E)">
           <EraserIcon />
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="selection-rectangle"
+          title="Selection Rectangle (S)"
+        >
+          <SquareDashedIcon />
         </ToggleGroupItem>
         <ToggleGroupItem value="pan" title="Pan (H)">
           <MoveIcon />

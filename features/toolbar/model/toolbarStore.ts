@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 
-export type Tool = 'pencil' | 'fill' | 'eraser' | 'pan' | 'zoom';
+export const TOOLS = [
+  'pencil',
+  'fill',
+  'eraser',
+  'pan',
+  'zoom',
+  'selection-rectangle',
+] as const;
+
+export type Tool = (typeof TOOLS)[number];
 
 export interface ToolSettings {
   pencil: { size: number; opacity: number };

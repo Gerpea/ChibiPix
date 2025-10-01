@@ -25,7 +25,6 @@ export class ZoomTool implements Tool {
     col: number,
     e: Konva.KonvaEventObject<WheelEvent>
   ): void {
-    console.log(e);
     const stageEl = e.target.getStage();
     if (!stageEl) return;
 
