@@ -9,11 +9,9 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
-  // When mounted on client, now we can show the UI
   React.useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    // Render a placeholder or nothing until mounted
     return <Button variant="outline" size="icon" disabled></Button>;
   }
 

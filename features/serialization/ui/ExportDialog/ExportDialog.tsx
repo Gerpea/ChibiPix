@@ -3,7 +3,7 @@ import { NativeTab } from './Tabs/NativeTab';
 import { PngTab } from './Tabs/PngTab';
 import { JpgTab } from './Tabs/JpgTab';
 import { GifTab } from './Tabs/GifTab';
-import { SpritesheetTab } from './Tabs/SpritesheetTab';
+import { SpritesheetTab } from './Tabs/SpritesheetTab/SpritesheetTab';
 import {
   Dialog,
   DialogContent,
