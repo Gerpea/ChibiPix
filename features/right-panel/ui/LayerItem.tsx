@@ -65,7 +65,7 @@ export const LayerItem: React.FC<LayerItemProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`bg-muted relative flex items-center gap-2 overflow-hidden rounded border p-2 ${active ? 'border-primary bg-primary/10' : 'border-border'}`}
+      className={`bg-muted relative flex items-center gap-2 overflow-hidden rounded border p-2 ${active ? 'border-primary' : 'border-border'}`}
       onClick={() => setActiveLayer(layer.id)}
     >
       <div className="flex">
@@ -108,14 +108,15 @@ export const LayerItem: React.FC<LayerItemProps> = ({
             />
           ) : (
             <span
+              title={layer.name}
               className="w-full cursor-pointer text-xs select-none"
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 setIsEditing(true);
               }}
             >
-              {layer.name.length > 21
-                ? layer.name.slice(0, 21) + '…'
+              {layer.name.length > 17
+                ? layer.name.slice(0, 17) + '…'
                 : layer.name}
             </span>
           )}
