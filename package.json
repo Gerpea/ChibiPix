@@ -40,6 +40,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.22",
     "gif-encoder-2": "^1.0.5",
     "jsonrepair": "^3.13.0",
     "jszip": "^3.10.1",
