@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full w-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex h-full w-full flex-col antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} flex h-full w-full flex-col overflow-hidden antialiased`}
       >
         <ThemeProvider
           attribute="class"

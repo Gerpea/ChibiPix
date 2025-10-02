@@ -153,11 +153,12 @@ export const PixelBoard: React.FC = () => {
 
   return (
     <div
-      className="relative m-0 flex h-full max-h-full w-full max-w-full touch-none items-center justify-center overflow-hidden p-0"
+      className="relative m-0 flex h-full w-full p-0"
       data-testid="main-canvas-wrapper"
       ref={parentRef}
     >
       <Stage
+        className="absolute top-0 right-0 bottom-0 left-0"
         width={stage.width}
         height={stage.height}
         style={stageStyle}

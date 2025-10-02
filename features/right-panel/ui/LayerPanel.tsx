@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { TrashIcon, CopyIcon, PlusIcon } from 'lucide-react';
 import {
@@ -27,9 +27,70 @@ export const LayerPanel: React.FC = () => {
   );
   const { addLayer, moveLayer, removeLayer, duplicateLayer } =
     useAnimationStore();
-
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor));
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const scrollWrapperRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (!panelRef.current || !headerRef.current || !scrollWrapperRef.current)
+        return;
+
+      const panelStyle = window.getComputedStyle(panelRef.current);
+      const paddingTop = parseFloat(panelStyle.paddingTop);
+      const paddingBottom = parseFloat(panelStyle.paddingBottom);
+      const borderTop = parseFloat(panelStyle.borderTopWidth);
+      const borderBottom = parseFloat(panelStyle.borderBottomWidth);
+
+      const headerStyle = window.getComputedStyle(headerRef.current);
+      const headerHeight = headerRef.current.getBoundingClientRect().height;
+      const headerMarginBottom = parseFloat(headerStyle.marginBottom);
+
+      let footerHeight = 0;
+      let footerMarginTop = 0;
+      let footerPaddingTop = 0;
+      let footerBorderTop = 0;
+      if (footerRef.current) {
+        const footerStyle = window.getComputedStyle(footerRef.current);
+        footerHeight = footerRef.current.getBoundingClientRect().height;
+        footerMarginTop = parseFloat(footerStyle.marginTop);
+        footerPaddingTop = parseFloat(footerStyle.paddingTop);
+        footerBorderTop = parseFloat(footerStyle.borderTopWidth);
+      }
+
+      const nonScrollHeight =
+        paddingTop +
+        paddingBottom +
+        borderTop +
+        borderBottom +
+        headerHeight +
+        headerMarginBottom +
+        footerHeight +
+        footerMarginTop +
+        footerPaddingTop +
+        footerBorderTop;
+
+      const panelHeight = panelRef.current.getBoundingClientRect().height;
+      const scrollHeight = panelHeight - nonScrollHeight;
+
+      scrollWrapperRef.current.style.height = `${scrollHeight}px`;
+    };
+
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+
+    const observer = new ResizeObserver(updateHeight);
+    if (panelRef.current) observer.observe(panelRef.current);
+
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      observer.disconnect();
+    };
+  }, [currentFrame?.activeLayerId]);
 
   if (!currentFrame) {
     return (
@@ -42,7 +103,7 @@ export const LayerPanel: React.FC = () => {
     );
   }
 
-  const { layers, activeLayerId } = currentFrame;
+  const { layers } = currentFrame;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(event.active.id as string);
@@ -64,29 +125,31 @@ export const LayerPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-background rounded-md border p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+    <div
+      ref={panelRef}
+      className="bg-background flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border p-4 shadow-sm"
+    >
+      <div
+        ref={headerRef}
+        className="mb-4 flex shrink-0 items-center justify-between"
+      >
         <h3 className="text-foreground text-sm font-medium">Layers</h3>
       </div>
-      <ScrollArea className="h-80 w-full pr-3">
-        <div className="flex w-full flex-col gap-2">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToParentElement]}
-          >
-            <SortableContext
-              items={
-                currentFrame
-                  ? currentFrame.layers.map((l) => l.id).reverse()
-                  : []
-              }
-              strategy={verticalListSortingStrategy}
+      <div ref={scrollWrapperRef} className="min-h-0">
+        <ScrollArea className="h-full w-full pr-3">
+          <div className="flex w-full flex-col gap-2">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              modifiers={[restrictToParentElement]}
             >
-              {currentFrame ? (
-                currentFrame.layers
+              <SortableContext
+                items={currentFrame.layers.map((l) => l.id).reverse()}
+                strategy={verticalListSortingStrategy}
+              >
+                {currentFrame.layers
                   .slice()
                   .reverse()
                   .map((layer) => (
@@ -97,38 +160,29 @@ export const LayerPanel: React.FC = () => {
                       active={layer.id === currentFrame.activeLayerId}
                       isDragging={layer.id === activeDragId}
                     />
-                  ))
-              ) : (
-                <div className="text-muted-foreground mt-4 text-center text-xs">
-                  No frame selected.
-                </div>
-              )}
-            </SortableContext>
-          </DndContext>
-        </div>
-      </ScrollArea>
-      {currentFrame && currentFrame.activeLayerId && (
-        <div className="border-border mt-3 flex justify-center gap-2 border-t pt-2">
+                  ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        </ScrollArea>
+      </div>
+      {currentFrame.activeLayerId && (
+        <div
+          ref={footerRef}
+          className="border-border mt-3 flex shrink-0 justify-center gap-2 border-t pt-2"
+        >
           <Button onClick={() => addLayer()} size="icon" variant="ghost">
             <PlusIcon className="h-3 w-3" />
           </Button>
           <Button
-            onClick={() => {
-              if (currentFrame.activeLayerId) {
-                duplicateLayer(currentFrame.activeLayerId);
-              }
-            }}
+            onClick={() => duplicateLayer(currentFrame.activeLayerId)}
             size="icon"
             variant="ghost"
           >
             <CopyIcon className="h-3 w-3" />
           </Button>
           <Button
-            onClick={() => {
-              if (currentFrame.activeLayerId) {
-                removeLayer(currentFrame.activeLayerId);
-              }
-            }}
+            onClick={() => removeLayer(currentFrame.activeLayerId)}
             size="icon"
             variant="ghost"
             disabled={currentFrame.layers.length <= 1}

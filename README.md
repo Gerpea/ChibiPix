@@ -1,22 +1,3 @@
 # ChibiPix
 
 **ChibiPix** is an open-source pixel persona and animation generator with a built-in pixel editor. It allows creators, game developers, and anime enthusiasts to design, animate, and export pixel characters quickly and easily.
-
-## Features (Todo)
-
-- 🎨 **Pixel Editor** – Draw, color, and edit your characters pixel by pixel.
-  - [x] Implement basic drawing tools (pen, eraser, fill)
-  - [x] Add color palette and selection
-  - [x] Support layers and undo/redo
-
-- 🤖 **Character Generator** – Generate pixel avatars or game sprites automatically.
-  - [x] Create random character generator
-
-- 🎞️ **Animation Tools** – Create walk cycles, idle animations, and loops.
-  - [x] Implement frame-by-frame timeline editor
-  - [x] Add preview/playback for animations
-
-- 💾 **Export Options** – Export your spritesheets, GIFs, or PNG frames.
-  - [x] Export as PNG frames
-  - [x] Export as GIF
-  - [ ] Export as spritesheet

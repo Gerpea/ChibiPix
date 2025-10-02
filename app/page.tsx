@@ -18,14 +18,14 @@ export default function Home() {
           <Toolbar />
         </aside>
 
-        <div className="flex h-full w-full flex-col gap-2">
-          <main className="bg-background flex h-full w-full items-center justify-center overflow-hidden rounded-md border shadow-sm">
+        <div className="flex w-full min-w-1/2 flex-col gap-2">
+          <main className="bg-background flex h-full w-full overflow-hidden rounded-md border shadow-sm">
             <PixelBoard />
           </main>
           <AnimationPanel />
         </div>
 
-        <aside className="flex w-72 max-w-72 min-w-72 flex-col gap-4">
+        <aside className="flex w-fit max-w-full min-w-1/6 flex-col gap-4">
           <RightPanel />
         </aside>
       </div>
