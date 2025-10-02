@@ -27,7 +27,12 @@ export class PencilTool implements Tool {
         ? useToolbarStore.getState().secondaryColor
         : useToolbarStore.getState().primaryColor
     );
-    this.drawPixel(row, col);
+    const adjustedColor = adjustColorOpacity(
+      this.color,
+      useToolbarStore.getState().toolSettings['pencil'].opacity
+    );
+    const size = useToolbarStore.getState().toolSettings['pencil'].size;
+    this.drawPixel(row, col, adjustedColor, size);
   }
   onMouseMove(
     row: number,
@@ -35,7 +40,12 @@ export class PencilTool implements Tool {
     e: Konva.KonvaEventObject<MouseEvent>
   ): void {
     if (this.isDrawing) {
-      this.drawPixel(row, col);
+      const adjustedColor = adjustColorOpacity(
+        this.color,
+        useToolbarStore.getState().toolSettings['pencil'].opacity
+      );
+      const size = useToolbarStore.getState().toolSettings['pencil'].size;
+      this.drawPixel(row, col, adjustedColor, size);
     }
   }
   onMouseUp(
@@ -66,9 +76,8 @@ export class PencilTool implements Tool {
     this.pendingPixels = [];
   }
 
-  protected drawPixel(row: number, col: number) {
+  protected drawPixel(row: number, col: number, color: number, size: number) {
     const ctx = this.ctx.ctx;
-    const color = this.color;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.imageSmoothingQuality = 'low';
@@ -78,12 +87,6 @@ export class PencilTool implements Tool {
     const snappedPanX = Math.floor(-pan.x * stage.scale);
     const snappedPanY = Math.floor(-pan.y * stage.scale);
     ctx.translate(snappedPanX, snappedPanY);
-
-    const adjustedColor = adjustColorOpacity(
-      color,
-      useToolbarStore.getState().toolSettings['pencil'].opacity
-    );
-    const size = useToolbarStore.getState().toolSettings['pencil'].size;
 
     const offset = Math.floor(size / 2);
 
@@ -95,10 +98,10 @@ export class PencilTool implements Tool {
         this.pendingPixels.push({
           x: px,
           y: py,
-          color: adjustedColor,
+          color: color,
         });
 
-        const hexColor = intToHex(adjustedColor);
+        const hexColor = intToHex(color);
 
         ctx.clearRect(
           Math.floor(px * PIXEL_SIZE * stage.scale),

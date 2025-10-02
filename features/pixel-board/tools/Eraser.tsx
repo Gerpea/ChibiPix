@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { PencilTool } from './Pencil';
+import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 
 export class EraserTool extends PencilTool {
   onMouseDown(
@@ -9,6 +10,18 @@ export class EraserTool extends PencilTool {
   ): void {
     this.isDrawing = true;
     this.color = 0;
-    this.drawPixel(row, col);
+    const size = useToolbarStore.getState().toolSettings['eraser'].size;
+    this.drawPixel(row, col, this.color, size);
+  }
+
+  onMouseMove(
+    row: number,
+    col: number,
+    e: Konva.KonvaEventObject<MouseEvent>
+  ): void {
+    if (this.isDrawing) {
+      const size = useToolbarStore.getState().toolSettings['eraser'].size;
+      this.drawPixel(row, col, this.color, size);
+    }
   }
 }
