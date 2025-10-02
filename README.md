@@ -1,21 +1,10 @@
 # Chibi-Pix: Pixel Art Creator
 
-Chibi-Pix is a user-friendly, web-based application for creating pixel art and simple animations. It provides a straightforward interface, making it accessible for both beginners and experienced artists to bring their pixelated creations to life.
+Chibi-Pix is a user-friendly, web-based application for creating pixel art and simple animations. It provides an intuitive interface, making it accessible for both beginners and experienced artists to bring their pixelated creations to life.
 
-## Live Application
+## Motivation
 
-You can try out the live application here: [https://chibi-pix.vercel.app/](https://chibi-pix.vercel.app/)
-
-## How to Use
-
-1.  **Canvas:** The main area is your canvas, where you can draw and create your art.
-2.  **Tools:** On the right-hand side, you will find the tool settings.
-    *   **Size:** Adjust the size of your brush.
-    *   **Opacity:** Control the transparency of your brush.
-    *   **Color:** Select your desired color using the color picker.
-3.  **Layers:** The layer system allows you to manage different elements of your artwork separately. You can add, delete, and select layers to work on.
-4.  **Import/Export:** Use the import and export options to save and share your work.
-5.  **Animation:** The "Animation" section allows you to create frame-by-frame animations.
+This project was developed as a hands-on initiative to refresh and apply front-end development skills after a long break. The goal was to build a complete, functional web application using a modern tech stack, reinforcing core concepts in state management, UI development, and application architecture.
 
 ## Features
 
@@ -30,12 +19,59 @@ You can try out the live application here: [https://chibi-pix.vercel.app/](https
     *   Export your animations as animated `GIFs` or as a `Spritesheet`.
 *   **Web-Based:** No installation required. You can access it from any modern web browser.
 
+## Live Application
+
+You can try out the live application here: **[https://chibi-pix.vercel.app/](https://chibi-pix.vercel.app/)**
+
+## Running Locally
+
+To get a local copy up and running, follow these simple steps.
+
+### Prerequisites
+
+You will need [Node.js](https://nodejs.org/) (version 18.x or later) and [**pnpm**](https://pnpm.io/installation) installed on your machine.
+
+### Installation & Setup
+
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/Gerpea/ChibiPix.git
+    ```
+2.  **Navigate to the project directory:**
+    ```sh
+    cd ChibiPix
+    ```
+3.  **Install dependencies:**
+    ```sh
+    pnpm install
+    ```
+4.  **Build the Web Workers:**
+    *This step is required for the export functionality to work correctly.*
+    ```sh
+    pnpm build:workers
+    ```
+5.  **Run the development server:**
+    ```sh
+    pnpm dev
+    ```
+
+The application should now be running on [http://localhost:3000](http://localhost:3000).
 
 ## Technologies Used
 
-This project appears to be built with the following technologies:
+This project is built with a modern and robust technology stack:
 
-*   **Next.js:** A React framework for building user interfaces.
-*   **React:** A JavaScript library for building user interfaces.
-*   **shadcn/ui:** A collection of re-usable components for building modern web applications.
-*   **Playwright:** An end-to-end testing framework.
+*   **Core Framework:**
+    *   **Next.js:** A React framework for building user interfaces.
+    *   **React:** A JavaScript library for building user interfaces.
+    *   **TypeScript:** For static typing and improved developer experience.
+
+*   **State Management:**
+    *   **Zustand:** A small, fast, and scalable state-management solution.
+
+*   **Styling & UI:**
+    *   **Tailwind CSS:** A utility-first CSS framework for rapid UI development.
+    *   **shadcn/ui:** A collection of re-usable components for building modern web applications.
+
+*   **Testing:**
+    *   **Playwright:** An end-to-end testing framework.

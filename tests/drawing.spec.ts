@@ -21,12 +21,13 @@ async function getDrawingCanvas(page: Page) {
   return canvasLocator;
 }
 
-test.describe('Core Drawing', () => {
+test.describe('Pixel Art Editor - Core Drawing', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
   test('should draw a single red pixel on the canvas', async ({ page }) => {
+    const canvasWrapperTestId = 'main-canvas-wrapper';
     const primaryColorTriggerTestId = 'primary-color-trigger';
     const newColor = '#ff0000';
     const newColorWithoutHash = 'ff0000';
@@ -37,8 +38,10 @@ test.describe('Core Drawing', () => {
     await hexInput.waitFor({ state: 'visible' });
     await hexInput.fill(newColorWithoutHash);
 
-    const canvas = await getDrawingCanvas(page);
-    await canvas.click();
+    const canvasWrapper = page.getByTestId(canvasWrapperTestId);
+    await canvasWrapper.click();
+    const canvas = canvasWrapper.locator('canvas').nth(1);
+
     const drawX = 10;
     const drawY = 10;
 
@@ -57,13 +60,16 @@ test.describe('Core Drawing', () => {
   });
 
   test('should erase a pixel', async ({ page }) => {
+    const canvasWrapperTestId = 'main-canvas-wrapper';
     const eraserToolTestId = 'eraser-tool';
 
-    const canvas = await getDrawingCanvas(page);
-    await canvas.click();
+    const canvasWrapper = page.getByTestId(canvasWrapperTestId);
+    await canvasWrapper.click();
+    const canvas = canvasWrapper.locator('canvas').nth(1);
     const drawX = 15;
     const drawY = 15;
-
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('Canvas not found or has no size');
     await canvas.click({
       position: { x: drawX, y: drawY },
       button: 'left',
