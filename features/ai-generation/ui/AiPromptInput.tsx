@@ -28,6 +28,7 @@ export const AIPromptInput: React.FC = () => {
         value={prompt}
         onChange={handleChange}
         className="border-border h-full resize-none"
+        autoComplete="off"
       />
       <Button onClick={handleGenerate} disabled={!prompt}>
         Generate
