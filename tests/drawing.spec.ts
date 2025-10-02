@@ -38,6 +38,7 @@ test.describe('Core Drawing', () => {
     await hexInput.fill(newColorWithoutHash);
 
     const canvas = await getDrawingCanvas(page);
+    await canvas.click();
     const drawX = 10;
     const drawY = 10;
 
@@ -59,7 +60,7 @@ test.describe('Core Drawing', () => {
     const eraserToolTestId = 'eraser-tool';
 
     const canvas = await getDrawingCanvas(page);
-
+    await canvas.click();
     const drawX = 15;
     const drawY = 15;
 

@@ -6,7 +6,9 @@ const encodeRLE = (pixels) => {
     }
     // Validate input pixels
     for (const [x, y, color] of pixels) {
-        if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(color)) {
+        if (!Number.isInteger(x) ||
+            !Number.isInteger(y) ||
+            !Number.isInteger(color)) {
             self.postMessage({
                 type: 'error',
                 layerId: '',
@@ -56,7 +58,10 @@ const encodeRLE = (pixels) => {
         }
         processed++;
         if (processed % 100 === 0 || processed === total) {
-            self.postMessage({ type: 'progress', progress: processed / total });
+            self.postMessage({
+                type: 'progress',
+                progress: processed / total,
+            });
         }
     }
     // Push the final run
@@ -79,7 +84,9 @@ const decodeRLE = (rleString) => {
     let processed = 0;
     const total = entries.length;
     for (const entry of entries) {
-        const [coords, countStr] = entry.includes(':') ? entry.split(':') : [entry, '1'];
+        const [coords, countStr] = entry.includes(':')
+            ? entry.split(':')
+            : [entry, '1'];
         if (!coords) {
             self.postMessage({
                 type: 'error',
@@ -104,7 +111,10 @@ const decodeRLE = (rleString) => {
         }
         processed++;
         if (processed % 100 === 0 || processed === total) {
-            self.postMessage({ type: 'progress', progress: processed / total });
+            self.postMessage({
+                type: 'progress',
+                progress: processed / total,
+            });
         }
     }
     self.postMessage({ type: 'progress', progress: 1 });
@@ -139,7 +149,11 @@ self.onmessage = function (e) {
                 return;
             }
             const encoded = encodeRLE(data);
-            self.postMessage({ type: 'result', layerId, result: encoded });
+            self.postMessage({
+                type: 'result',
+                layerId,
+                result: encoded,
+            });
         }
         else if (action === 'decode') {
             if (typeof data !== 'string') {
@@ -151,7 +165,11 @@ self.onmessage = function (e) {
                 return;
             }
             const decoded = decodeRLE(data);
-            self.postMessage({ type: 'result', layerId, result: decoded });
+            self.postMessage({
+                type: 'result',
+                layerId,
+                result: decoded,
+            });
         }
     }
     catch (error) {
