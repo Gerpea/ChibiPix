@@ -137,11 +137,11 @@ export const JpgTab: React.FC = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <Label htmlFor="quality">Quality</Label>
+        <Label htmlFor="quality">{`Quality (${quality})`}</Label>
         <Slider
           id="quality"
           min={1}
-          max={30}
+          max={100}
           value={[quality]}
           onValueChange={handleQualityChange}
         />

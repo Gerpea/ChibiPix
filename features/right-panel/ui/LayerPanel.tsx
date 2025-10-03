@@ -20,6 +20,7 @@ import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { ScrollArea } from '@/shared/ui/ScrollArea';
 import { LayerItem } from './LayerItem';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 export const LayerPanel: React.FC = () => {
   const currentFrame = useAnimationStore(
@@ -171,24 +172,45 @@ export const LayerPanel: React.FC = () => {
           ref={footerRef}
           className="border-border mt-3 flex shrink-0 justify-center gap-2 border-t pt-2"
         >
-          <Button onClick={() => addLayer()} size="icon" variant="ghost">
-            <PlusIcon className="h-3 w-3" />
-          </Button>
-          <Button
-            onClick={() => duplicateLayer(currentFrame.activeLayerId)}
-            size="icon"
-            variant="ghost"
-          >
-            <CopyIcon className="h-3 w-3" />
-          </Button>
-          <Button
-            onClick={() => removeLayer(currentFrame.activeLayerId)}
-            size="icon"
-            variant="ghost"
-            disabled={currentFrame.layers.length <= 1}
-          >
-            <TrashIcon className="h-3 w-3" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button onClick={() => addLayer()} size="icon" variant="ghost">
+                <PlusIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Add (Ctrl + Shift + L)</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                onClick={() => duplicateLayer(currentFrame.activeLayerId)}
+                size="icon"
+                variant="ghost"
+              >
+                <CopyIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Copy (Ctrl + L)</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                onClick={() => removeLayer(currentFrame.activeLayerId)}
+                size="icon"
+                variant="ghost"
+                disabled={currentFrame.layers.length <= 1}
+              >
+                <TrashIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Delete (Shift + Del)</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

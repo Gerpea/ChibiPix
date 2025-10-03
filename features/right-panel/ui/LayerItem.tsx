@@ -17,6 +17,7 @@ import {
   useAnimationStore,
 } from '@/features/animation/model/animationStore';
 import { LayerPreview } from './LayerPreview';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 interface LayerItemProps {
   id: string;
@@ -69,21 +70,28 @@ export const LayerItem: React.FC<LayerItemProps> = ({
       onClick={() => setActiveLayer(layer.id)}
     >
       <div className="flex">
-        <Button
-          size="small-icon"
-          variant="ghost"
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleLayerVisibility(layer.id);
-          }}
-        >
-          {layer.visible ? (
-            <EyeIcon className="h-4 w-4" />
-          ) : (
-            <EyeOffIcon className="h-4 w-4" />
-          )}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="small-icon"
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLayerVisibility(layer.id);
+              }}
+            >
+              {layer.visible ? (
+                <EyeIcon className="h-4 w-4" />
+              ) : (
+                <EyeOffIcon className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>Toggle Visibility (V)</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <LayerPreview layer={layer} />
@@ -121,21 +129,28 @@ export const LayerItem: React.FC<LayerItemProps> = ({
             </span>
           )}
           <div className="flex">
-            <Button
-              size="small-icon"
-              variant="ghost"
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleLayerLock(layer.id);
-              }}
-            >
-              {layer.locked ? (
-                <LockIcon className="h-4 w-4" />
-              ) : (
-                <LockOpenIcon className="h-4 w-4" />
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="small-icon"
+                  variant="ghost"
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLayerLock(layer.id);
+                  }}
+                >
+                  {layer.locked ? (
+                    <LockIcon className="h-4 w-4" />
+                  ) : (
+                    <LockOpenIcon className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Toggle Lock (L)</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           <div
             {...listeners}

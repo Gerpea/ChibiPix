@@ -15,6 +15,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/ToggleGroup';
 import { rgbaToHex } from '@/shared/utils/colors';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 export const Toolbar: React.FC = () => {
   const {
@@ -35,31 +36,66 @@ export const Toolbar: React.FC = () => {
         onValueChange={(value: Tool) => value && setCurrentTool(value)}
         className="flex flex-col gap-2"
       >
-        <ToggleGroupItem value="pencil" title="Pencil (P)">
-          <PencilIcon className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="fill" title="Fill (F)">
-          <DropletIcon className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="eraser"
-          title="Eraser (E)"
-          data-testid="eraser-tool"
-        >
-          <EraserIcon className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="selection-rectangle"
-          title="Selection Rectangle (S)"
-        >
-          <SquareDashedIcon className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="pan" title="Pan (H)">
-          <MoveIcon className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="zoom" title="Zoom (Z)">
-          <ZoomInIcon className="h-4 w-4" />
-        </ToggleGroupItem>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="pencil">
+              <PencilIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Pencil (P)</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="fill">
+              <DropletIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Fill (F)</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="eraser" data-testid="eraser-tool">
+              <EraserIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Eraser (E)</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="selection-rectangle">
+              <SquareDashedIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Selection Rectangle (S)</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="pan">
+              <MoveIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Pan (H)</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <ToggleGroupItem value="zoom">
+              <ZoomInIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Zoom (Z)</p>
+          </TooltipContent>
+        </Tooltip>
       </ToggleGroup>
 
       <div className="relative mt-auto flex flex-col items-center gap-2">
@@ -89,13 +125,19 @@ export const Toolbar: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          <button
-            onClick={swapColors}
-            className="text-foreground flex h-fit w-fit cursor-pointer items-center justify-center p-0"
-            title="Swap colors (X)"
-          >
-            <Repeat2Icon className="h-4 w-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={swapColors}
+                className="text-foreground flex h-fit w-fit cursor-pointer items-center justify-center p-0"
+              >
+                <Repeat2Icon className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Swap colors (X)</p>
+            </TooltipContent>
+          </Tooltip>
 
           <Popover>
             <PopoverTrigger asChild>

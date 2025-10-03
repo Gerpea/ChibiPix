@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Hotkeys } from '@/features/hotkeys/ui/Hotkeys';
 import { ThemeProvider } from '@/features/theme/ui/ThemeProvider';
+import { TooltipProvider } from '@/shared/ui/Tooltip';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -35,8 +36,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Hotkeys />
+          <TooltipProvider>
+            {children}
+            <Hotkeys />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -3,6 +3,7 @@ import { Download, Upload } from 'lucide-react';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { Button } from '@/shared/ui/Button';
 import { ExportDialog } from './ExportDialog/ExportDialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 export function ImportExportButtons() {
   const { importAnimationData } = useAnimationStore();
@@ -36,33 +37,47 @@ export function ImportExportButtons() {
 
   return (
     <div className="flex gap-2">
-      <Button
-        onClick={() => setDialogOpen(true)}
-        disabled={isImporting}
-        size="icon"
-        variant="outline"
-        className="flex items-center gap-2"
-        title="Export Animation"
-      >
-        <Download className="h-4 w-4" />
-      </Button>
-      <Button
-        onClick={handleImport}
-        disabled={isImporting}
-        size="icon"
-        variant="outline"
-        className="flex items-center gap-2"
-        title="Import Animation"
-      >
-        <Upload className="h-4 w-4" />
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept=".chbpx"
-        onChange={handleFileChange}
-        className="hidden"
-      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={() => setDialogOpen(true)}
+            disabled={isImporting}
+            size="icon"
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p>Export Animation</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger>
+          <>
+            <Button
+              onClick={handleImport}
+              disabled={isImporting}
+              size="icon"
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".chbpx"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p>Import Animation</p>
+        </TooltipContent>
+      </Tooltip>
       <ExportDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );

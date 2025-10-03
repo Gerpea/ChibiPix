@@ -5,6 +5,7 @@ import { ChromePicker } from 'react-color';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { Slider } from '@/shared/ui/Slider';
 import { rgbaToHex } from '@/shared/utils/colors';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 export const ToolSettings: React.FC = () => {
   const {
@@ -118,12 +119,14 @@ export const ToolSettings: React.FC = () => {
 
         {/* --- Chrome Color Picker --- */}
         <div className="flex w-full flex-col gap-2">
-          <span
-            className="text-sm"
-            title="Left-click to set primary, Right-click to set secondary"
-          >
-            Color
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-sm">Color</span>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>Left-click for primary, Right-click for secondary</p>
+            </TooltipContent>
+          </Tooltip>
           <div
             className={`transition-opacity ${!showColorPicker ? 'pointer-events-none opacity-50' : ''}`}
             onMouseDownCapture={(e) => {

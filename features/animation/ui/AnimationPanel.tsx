@@ -22,6 +22,7 @@ import {
 } from '@/shared/ui/Collapsible';
 import { Frames } from './Frames';
 import { Timeline } from './Timeline';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
 
 export const AnimationPanel: React.FC = () => {
   const {
@@ -137,36 +138,79 @@ export const AnimationPanel: React.FC = () => {
               />
             </div>
             <div className="flex justify-center gap-2">
-              <Button
-                onClick={isPlaying ? pause : play}
-                size="icon"
-                variant="ghost"
-              >
-                {isPlaying ? (
-                  <PauseIcon className="h-3 w-3" />
-                ) : (
-                  <PlayIcon className="h-3 w-3" />
-                )}
-              </Button>
-              <Button onClick={stop} size="icon" variant="ghost">
-                <SquareIcon className="h-3 w-3" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    onClick={isPlaying ? pause : play}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    {isPlaying ? (
+                      <PauseIcon className="h-3 w-3" />
+                    ) : (
+                      <PlayIcon className="h-3 w-3" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{isPlaying ? 'Pause (Space)' : 'Play (Space)'}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button onClick={stop} size="icon" variant="ghost">
+                    <SquareIcon className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Stop (Shift + Space)</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
-                <Button onClick={() => addFrame()} size="icon" variant="ghost">
-                  <PlusIcon className="h-3 w-3" />
-                </Button>
-                <Button onClick={handleDuplicate} size="icon" variant="ghost">
-                  <CopyIcon className="h-3 w-3" />
-                </Button>
-                <Button
-                  onClick={() => removeFrame(currentFrameIndex)}
-                  size="icon"
-                  variant="ghost"
-                >
-                  <TrashIcon className="h-3 w-3" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      onClick={() => addFrame()}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <PlusIcon className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Add (Ctrl + Shift + K)</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      onClick={handleDuplicate}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <CopyIcon className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Copy (Ctrl + K)</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      onClick={() => removeFrame(currentFrameIndex)}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Delete (Ctrl + Del)</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>
