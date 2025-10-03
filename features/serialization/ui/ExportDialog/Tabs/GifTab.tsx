@@ -66,8 +66,12 @@ export const GifTab: React.FC = () => {
         if (!blob) return null;
         if (forPreview) {
           const url = URL.createObjectURL(blob);
-          if (previewUrl) URL.revokeObjectURL(previewUrl); // Clean up old URL
-          setPreviewUrl(url);
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          setPreviewUrl((previewUrl) => {
+            const url = URL.createObjectURL(blob);
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            return url;
+          });
           return null;
         } else {
           saveAs(blob, `${name}.gif`);
@@ -84,7 +88,7 @@ export const GifTab: React.FC = () => {
         }
       }
     },
-    [frames, padding, quality, backgroundColor, name, previewUrl]
+    [frames, padding, quality, backgroundColor, name]
   );
 
   const handleExport = useCallback(() => {
@@ -98,10 +102,11 @@ export const GifTab: React.FC = () => {
 
     debouncedPreview();
 
+    console.log('what');
     return () => {
       debouncedPreview.cancel();
     };
-  }, [generateGIF, padding, backgroundColor]);
+  }, [generateGIF]);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -126,7 +131,7 @@ export const GifTab: React.FC = () => {
           />
         </div>
         <div>
-          <Label className="mb-1.5 block">Background</Label>
+          <Label>Background</Label>
           <Popover>
             <PopoverTrigger asChild>
               <div
