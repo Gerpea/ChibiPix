@@ -19,6 +19,9 @@ export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
 }) => {
   const { stage } = usePixelBoardStore();
   const imageRef = useRef<Konva.Image>(null);
+  const flippedPixelsRef = useRef<
+    { col: number; row: number; startTime: number }[]
+  >([]);
 
   // Calculate the number of pixels based on scaled dimensions
   const cols = Math.max(1, Math.ceil(width / (PIXEL_SIZE * stage.scale)));
@@ -47,42 +50,50 @@ export const FlipFlopPixelGrid: React.FC<FlipFlopPixelGridProps> = ({
     ctx.imageSmoothingEnabled = false;
     ctx.imageSmoothingQuality = 'low';
 
-    // --- Radial Pulse Animation ---
-    const centerX = cols / 2;
-    const centerY = rows / 2;
-
-    // Find the furthest distance from the center to a corner
-    const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
-
     const anim = new Konva.Animation((frame) => {
       if (!frame) return;
 
-      const time = frame.time / 1000; // time in seconds
+      const time = frame.time / 1000;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, cols, rows);
       ctx.imageSmoothingEnabled = false;
       ctx.imageSmoothingQuality = 'low';
 
-      for (let i = 0; i < total; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
+      const flipSpeed = 0.5;
+      const maxFlips = Math.floor(total * 0.5);
+      const flipDuration = 0.5;
 
-        const dx = col - centerX;
-        const dy = row - centerY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+      if (
+        Math.random() < flipSpeed &&
+        flippedPixelsRef.current.length < maxFlips
+      ) {
+        const index = Math.floor(Math.random() * total);
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        flippedPixelsRef.current.push({ col, row, startTime: time });
+      }
 
-        // Create a wave that travels outwards from the center
-        const pulse = Math.sin((distance / maxDist) * 35 - time * 2);
-        const alpha = Math.pow(Math.max(0, pulse), 1.5);
+      for (let i = flippedPixelsRef.current.length - 1; i >= 0; i--) {
+        const { col, row, startTime } = flippedPixelsRef.current[i];
+        const elapsed = time - startTime;
 
-        ctx.fillStyle = `rgba(130, 200, 255, ${alpha})`;
+        if (elapsed > flipDuration) {
+          flippedPixelsRef.current.splice(i, 1);
+          continue;
+        }
+
+        const alpha = Math.sin((elapsed / flipDuration) * Math.PI);
+        ctx.fillStyle = `rgba(150, 150, 150, ${alpha})`;
         ctx.fillRect(col, row, 1, 1);
       }
+
+      layer.batchDraw();
     }, layer);
 
     anim.start();
     return () => {
       anim.stop();
+      flippedPixelsRef.current = [];
     };
   }, [cols, rows, total, offscreenCanvas, stage.scale]);
 

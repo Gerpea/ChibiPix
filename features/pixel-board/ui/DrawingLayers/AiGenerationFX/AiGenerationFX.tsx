@@ -31,27 +31,7 @@ export const AIGenerationFX: React.FC<AIGenerationFXProps> = ({
   };
 
   return (
-    <Group
-      key={generation.id}
-      x={x}
-      y={y}
-      clipFunc={(ctx) => {
-        const radius = 8;
-        const w = width;
-        const h = height;
-        ctx.beginPath();
-        ctx.moveTo(radius, 0);
-        ctx.lineTo(w - radius, 0);
-        ctx.quadraticCurveTo(w, 0, w, radius);
-        ctx.lineTo(w, h - radius);
-        ctx.quadraticCurveTo(w, h, w - radius, h);
-        ctx.lineTo(radius, h);
-        ctx.quadraticCurveTo(0, h, 0, h - radius);
-        ctx.lineTo(0, radius);
-        ctx.quadraticCurveTo(0, 0, radius, 0);
-        ctx.closePath();
-      }}
-    >
+    <Group key={generation.id} x={x} y={y}>
       <GlowingRect x={0} y={0} width={width} height={height} />
       <FlipFlopPixelGrid x={0} y={0} width={width} height={height} />
       <StopButton width={width} onStop={handleStop} />
