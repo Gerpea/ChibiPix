@@ -7,7 +7,6 @@ import {
   Frame,
   useAnimationStore,
 } from '@/features/animation/model/animationStore';
-import { useExportStore } from '@/features/serialization/model/exportStore';
 import { Checkbox } from '@/shared/ui/Checkbox';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
@@ -15,25 +14,18 @@ import { ExportPreviews } from '../ExportPreviews';
 import { ProgressButton } from '../ProgressButton';
 import { exportFramesToJPG } from '@/features/serialization/lib/jpg';
 import { Slider } from '@/shared/ui/Slider';
+import { useExportContext } from '@/features/serialization/model/ExportContext';
 
 export const JpgTab: React.FC = () => {
   const { frames } = useAnimationStore();
   const { padding, selectedFrames, setPadding, setSelectedFrames } =
-    useExportStore();
+    useExportContext();
   const [prefix, setPrefix] = useState('frame_');
   const [useZip, setUseZip] = useState(false);
   const [consistentSize, setConsistentSize] = useState(false);
-  const [quality, setQuality] = useState(80); // Default quality: 80% (0.8 internally)
+  const [quality, setQuality] = useState(80);
   const [progress, setProgress] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-
-  useEffect(() => {
-    setSelectedFrames(
-      frames
-        ? new Map<string, boolean>(frames.map((frame) => [frame.id, true]))
-        : new Map<string, boolean>()
-    );
-  }, [frames, setSelectedFrames]);
 
   const handlePrefixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPrefix(e.target.value);
@@ -74,7 +66,7 @@ export const JpgTab: React.FC = () => {
         frames: exportFrames,
         padding: padding,
         consistentSize: consistentSize,
-        quality: quality / 100, // Convert percentage to 0-1 range
+        quality: quality / 100,
         onProgress: setProgress,
       });
 

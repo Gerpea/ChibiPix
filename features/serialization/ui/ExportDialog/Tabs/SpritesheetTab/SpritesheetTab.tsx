@@ -2,7 +2,6 @@ import { ChangeEvent, useState } from 'react';
 import { Loader2Icon } from 'lucide-react';
 import { CheckedState } from '@radix-ui/react-checkbox';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
-import { useExportStore } from '@/features/serialization/model/exportStore';
 import { Checkbox } from '@/shared/ui/Checkbox';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
@@ -13,10 +12,11 @@ import { useSpritesheetLayout } from './hooks/useSpritesheetLayout';
 import { useSpritesheetExporter } from './hooks/useSpritesheetExporter';
 import { ExportPreviews } from '../../ExportPreviews';
 import { ProgressButton } from '../../ProgressButton';
+import { useExportContext } from '@/features/serialization/model/ExportContext';
 
 export const SpritesheetTab: React.FC = () => {
   const { frames } = useAnimationStore();
-  const { padding, selectedFrames, setPadding } = useExportStore();
+  const { padding, selectedFrames, setPadding } = useExportContext();
   const [filename, setFilename] = useState('spritesheet');
   const [columns, setColumns] = useState(4);
   const [consistentSize, setConsistentSize] = useState(true);

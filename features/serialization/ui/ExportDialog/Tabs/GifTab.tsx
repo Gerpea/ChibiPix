@@ -4,7 +4,6 @@ import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { Loader2Icon } from 'lucide-react';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
-import { useExportStore } from '@/features/serialization/model/exportStore';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
 import { ProgressButton } from '../ProgressButton';
@@ -14,10 +13,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/Popover';
 import { SketchPicker } from 'react-color';
 import { debounce } from 'lodash';
 import { PIXEL_SIZE } from '@/features/pixel-board/const';
+import { useExportContext } from '@/features/serialization/model/ExportContext';
 
 export const GifTab: React.FC = () => {
   const { frames } = useAnimationStore();
-  const { padding, setPadding } = useExportStore();
+  const { padding, setPadding } = useExportContext();
   const [name, setName] = useState('name');
   const [quality, setQuality] = useState(10);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');

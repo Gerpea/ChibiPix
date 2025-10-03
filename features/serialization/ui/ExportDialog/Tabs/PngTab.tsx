@@ -7,31 +7,23 @@ import {
   Frame,
   useAnimationStore,
 } from '@/features/animation/model/animationStore';
-import { useExportStore } from '@/features/serialization/model/exportStore';
 import { Checkbox } from '@/shared/ui/Checkbox';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
 import { ExportPreviews } from '../ExportPreviews';
 import { ProgressButton } from '../ProgressButton';
 import { exportFramesToPNG } from '@/features/serialization/lib/png';
+import { useExportContext } from '@/features/serialization/model/ExportContext';
 
 export const PngTab: React.FC = () => {
   const { frames } = useAnimationStore();
   const { padding, selectedFrames, setPadding, setSelectedFrames } =
-    useExportStore();
+    useExportContext();
   const [prefix, setPrefix] = useState('frame_');
   const [useZip, setUseZip] = useState(false);
   const [consistentSize, setConsistentSize] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-
-  useEffect(() => {
-    setSelectedFrames(
-      frames
-        ? new Map<string, boolean>(frames.map((frame) => [frame.id, true]))
-        : new Map<string, boolean>()
-    );
-  }, [frames, setSelectedFrames]);
 
   const handlePrefixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPrefix(e.target.value);
@@ -58,7 +50,7 @@ export const PngTab: React.FC = () => {
         const blob = blobs[i];
         if (!blob) continue;
         if (zip) {
-          zip.file(`${name}.png`, blob); // Use the existing zip instance
+          zip.file(`${name}.png`, blob);
         } else {
           saveAs(blob, `${name}.png`);
         }

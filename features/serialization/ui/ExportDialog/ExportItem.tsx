@@ -1,15 +1,8 @@
 import { Layer } from '@/features/animation/model/animationStore';
 import { useCallback, useMemo } from 'react';
 import { ExportPreview } from './ExportPreview';
-import { useExportStore } from '../../model/exportStore';
-import { Checkbox } from '@/shared/ui/Checkbox';
-import {
-  CheckCircle,
-  CheckIcon,
-  SquareCheck,
-  SquareCheckIcon,
-  SquareIcon,
-} from 'lucide-react';
+import { SquareCheckIcon, SquareIcon } from 'lucide-react';
+import { useExportContext } from '../../model/ExportContext';
 
 interface FrameItemProps {
   frame: { id: string; name: string; layers: Layer[]; duration: number };
@@ -17,7 +10,7 @@ interface FrameItemProps {
 
 export const ExportItem: React.FC<FrameItemProps> = ({ frame }) => {
   const { padding, toggleFrame, isFrameSelected, selectedFrames } =
-    useExportStore();
+    useExportContext();
   const handleToggle = useCallback(() => {
     toggleFrame(frame.id);
   }, [frame]);
