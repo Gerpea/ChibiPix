@@ -1,15 +1,15 @@
 import { ChangeEvent, useCallback, useState } from 'react';
 import { saveAs } from 'file-saver';
+import { Loader2Icon } from 'lucide-react';
 import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
 import { ExportPreviews } from '../ExportPreviews';
-import { Loader2Icon } from 'lucide-react';
 import { ProgressButton } from '../ProgressButton';
 
 export const NativeTab: React.FC = () => {
   const { exportAnimationData } = useAnimationStore();
-  const [fileName, setFileName] = useState('animation');
+  const [fileName, setFileName] = useState('project');
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -20,7 +20,7 @@ export const NativeTab: React.FC = () => {
         setProgress(progress.progress * 100);
       });
       const blob = new Blob([text], { type: 'text/plain' });
-      saveAs(blob, `${fileName}.anim`);
+      saveAs(blob, `${fileName}.chbpx`);
     } catch (error) {
       console.error('Export error:', error);
     } finally {

@@ -59,7 +59,7 @@ export function ImportExportButtons() {
       <input
         type="file"
         ref={fileInputRef}
-        accept=".anim"
+        accept=".chbpx"
         onChange={handleFileChange}
         className="hidden"
       />

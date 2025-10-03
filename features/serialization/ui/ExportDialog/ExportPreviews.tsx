@@ -6,15 +6,15 @@ import { ScrollArea, ScrollBar } from '@/shared/ui/ScrollArea';
 export const ExportPreviews: React.FC = () => {
   const { frames } = useAnimationStore();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      const { width } = entries[0].contentRect;
-      setContainerWidth(width);
+      const { height } = entries[0].contentRect;
+      setContainerHeight(height);
     });
 
     resizeObserver.observe(container);
@@ -23,14 +23,14 @@ export const ExportPreviews: React.FC = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="h-fit w-full">
-      <ScrollArea className="h-fit" style={{ width: containerWidth }}>
-        <div className="mb-3 flex flex-row gap-2 whitespace-nowrap">
+    <div ref={containerRef} className="h-full w-full">
+      <ScrollArea className="w-full" style={{ height: containerHeight }}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-1 p-2">
           {frames.map((frame) => (
             <ExportItem key={frame.id} frame={frame} />
           ))}
         </div>
-        <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="vertical" />
       </ScrollArea>
     </div>
   );

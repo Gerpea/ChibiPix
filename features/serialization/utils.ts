@@ -12,7 +12,7 @@ export interface ImportProgress {
   progress: number;
 }
 
-// Intermediate structure for parsing the .anim file
+// Intermediate structure for parsing the .chbpx file
 interface ParsedLayerData {
   id: string;
   name: string;
@@ -30,7 +30,7 @@ interface ParsedFrameData {
 }
 
 /**
- * Validates and parses the .anim file format.
+ * Validates and parses the .chbpx file format.
  */
 function validateAndParseAnimationData(data: string): {
   fps: number;
@@ -38,15 +38,15 @@ function validateAndParseAnimationData(data: string): {
 } {
   const lines = data.trim().split('\n');
   if (lines.length < 2 || !lines[0].startsWith('#ANIMATION')) {
-    throw new Error('Invalid .anim format: Missing #ANIMATION header.');
+    throw new Error('Invalid .chbpx format: Missing #ANIMATION header.');
   }
 
   if (!lines[1].startsWith('FPS:')) {
-    throw new Error('Invalid .anim format: Missing FPS property on line 2.');
+    throw new Error('Invalid .chbpx format: Missing FPS property on line 2.');
   }
   const fps = parseInt(lines[1].split(':')[1]);
   if (isNaN(fps)) {
-    throw new Error('Invalid .anim format: Invalid FPS value.');
+    throw new Error('Invalid .chbpx format: Invalid FPS value.');
   }
 
   const frames: ParsedFrameData[] = [];
@@ -117,7 +117,7 @@ function validateAndParseAnimationData(data: string): {
 }
 
 /**
- * Exports animation data to a string in the .anim format.
+ * Exports animation data to a string in the .chbpx format.
  */
 export async function exportAnimation(
   animation: { frames: Frame[]; fps: number },
@@ -174,7 +174,7 @@ export async function exportAnimation(
 
     await Promise.all(promises);
 
-    // Build the final .anim string
+    // Build the final .chbpx string
     const output: string[] = ['#ANIMATION', `FPS:${animation.fps}`];
 
     animation.frames.forEach((frame) => {
