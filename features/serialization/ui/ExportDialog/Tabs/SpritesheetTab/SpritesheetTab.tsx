@@ -17,7 +17,7 @@ import { ProgressButton } from '../../ProgressButton';
 export const SpritesheetTab: React.FC = () => {
   const { frames } = useAnimationStore();
   const { padding, selectedFrames, setPadding } = useExportStore();
-  const [filename, setFilename] = useState('spritesheet.png');
+  const [filename, setFilename] = useState('spritesheet');
   const [columns, setColumns] = useState(4);
   const [consistentSize, setConsistentSize] = useState(true);
 
@@ -59,7 +59,7 @@ export const SpritesheetTab: React.FC = () => {
     <div className="flex h-full flex-col gap-4">
       <div className="flex gap-2">
         <div className="flex-1">
-          <Label htmlFor="filename">Filename</Label>
+          <Label htmlFor="filename">File Name</Label>
           <Input
             id="filename"
             value={filename}

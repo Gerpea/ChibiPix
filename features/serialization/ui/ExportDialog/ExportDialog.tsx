@@ -26,63 +26,72 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
         <DialogHeader>
           <DialogTitle>Export Animation</DialogTitle>
         </DialogHeader>
-        <div className="flex h-[720px]">
+        <div className="flex h-[720px] flex-col">
           <Tabs
             value={selectedFormat}
             onValueChange={setSelectedFormat}
-            className="flex w-full"
-            orientation="vertical"
+            className="flex h-full w-full flex-col"
+            orientation="horizontal"
           >
-            <TabsList className="flex h-full w-1/4 flex-col justify-start border-r">
+            <TabsList className="flex h-fit w-full justify-start border-r">
               <TabsTrigger
                 value="anim"
                 className="flex w-full justify-center p-2"
               >
-                .anim
+                ChibiPix
               </TabsTrigger>
               <TabsTrigger
                 value="png"
                 className="flex w-full justify-center p-2"
               >
-                .png
+                PNG
               </TabsTrigger>
               <TabsTrigger
                 value="jpg"
                 className="flex w-full justify-center p-2"
               >
-                .jpg
+                JPG
               </TabsTrigger>
               <TabsTrigger
                 value="gif"
                 className="flex w-full justify-center p-2"
               >
-                .gif
+                GIF
               </TabsTrigger>
               <TabsTrigger
                 value="sheet"
                 className="flex w-full justify-center p-2"
               >
-                sheet
+                Sheet
               </TabsTrigger>
             </TabsList>
             <TabsContent
               value="anim"
-              className="mt-0 w-full overflow-auto px-4"
+              className="h-full w-full overflow-auto px-4"
             >
               <NativeTab />
             </TabsContent>
-            <TabsContent value="png" className="mt-0 w-full overflow-auto px-4">
+            <TabsContent
+              value="png"
+              className="h-full w-full overflow-auto px-4"
+            >
               <PngTab />
             </TabsContent>
-            <TabsContent value="jpg" className="mt-0 w-full overflow-auto px-4">
+            <TabsContent
+              value="jpg"
+              className="h-full w-full overflow-auto px-4"
+            >
               <JpgTab />
             </TabsContent>
-            <TabsContent value="gif" className="mt-0 w-full overflow-auto px-4">
+            <TabsContent
+              value="gif"
+              className="h-full w-full overflow-auto px-4"
+            >
               <GifTab />
             </TabsContent>
             <TabsContent
               value="sheet"
-              className="mt-0 w-full overflow-auto px-4"
+              className="h-full w-full overflow-auto px-4"
             >
               <SpritesheetTab />
             </TabsContent>
