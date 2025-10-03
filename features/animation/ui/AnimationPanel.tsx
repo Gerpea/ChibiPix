@@ -36,6 +36,7 @@ export const AnimationPanel: React.FC = () => {
     stop,
     removeFrame,
     setFrameDuration,
+    isImporting,
   } = useAnimationStore();
   const [isOpen, setIsOpen] = useState(true);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -46,7 +47,7 @@ export const AnimationPanel: React.FC = () => {
 
   useEffect(() => {
     const oldFps = prevFpsRef.current;
-    if (oldFps !== fps) {
+    if (oldFps !== fps && !isImporting) {
       const oldTick = 1000 / oldFps;
       const newTick = 1000 / fps;
       frames.forEach((frame, index) => {
@@ -60,8 +61,11 @@ export const AnimationPanel: React.FC = () => {
         play();
       }
       prevFpsRef.current = fps;
+      if (isImporting) {
+        useAnimationStore.setState({ isImporting: false });
+      }
     }
-  }, [fps, frames, setFrameDuration, isPlaying, pause, play]);
+  }, [fps, frames, setFrameDuration, isPlaying, isImporting, pause, play]);
 
   useEffect(() => {
     if (!isOpen) {

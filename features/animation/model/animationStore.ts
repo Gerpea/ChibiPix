@@ -37,6 +37,7 @@ interface AnimationState {
   currentFrameIndex: number;
   fps: number;
   isPlaying: boolean;
+  isImporting: boolean;
   timer: number | null;
   currentTime: number;
 
@@ -109,6 +110,7 @@ export const useAnimationStore = create<AnimationState>()(
         currentFrameIndex: 0,
         fps: 12,
         isPlaying: false,
+        isImporting: false,
         timer: null,
         currentTime: 0,
 
@@ -562,13 +564,13 @@ export const useAnimationStore = create<AnimationState>()(
             throw new Error('Import failed: No frames found in the file.');
           }
 
-          // Directly set the new state. No need to interact with a separate layer store.
           set({
             frames,
             fps,
             currentFrameIndex: 0,
             currentTime: 0,
             isPlaying: false,
+            isImporting: true,
             timer: null,
           });
           useHistoryStore.getState().push();
