@@ -120,11 +120,13 @@ export const AnimationPanel: React.FC = () => {
             className="relative mt-4"
             style={{ width: `${containerWidth - 0}px` }}
           >
-            <Timeline scrollContainerRef={scrollRef} />
-            <Frames scrollContainerRef={scrollRef} />
-            <ScrollBar orientation="horizontal" />
+            <div className="pb-2.5">
+              <Timeline scrollContainerRef={scrollRef} />
+              <Frames scrollContainerRef={scrollRef} />
+              <ScrollBar orientation="horizontal" />
+            </div>
           </ScrollArea>
-          <div className="border-border mt-3 flex justify-between gap-2 border-t pt-2">
+          <div className="border-border mt-1 flex justify-between gap-2 border-t pt-2">
             <div>
               <Input
                 type="number"
