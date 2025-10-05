@@ -14,11 +14,21 @@ const eslintConfig = [
   {
     ignores: [
       'node_modules/**',
+      'public/**',
       '.next/**',
       'out/**',
       'build/**',
       'next-env.d.ts',
-      '.husky/**'
+      '.husky/**',
+      'dist/**',
+      '*.log',
+      'coverage/**',
+      '.env*.local',
+      'test-results/**',
+      'playwright-report/**',
+      'blob-report/**',
+      'playwright/.cache/**',
+      'playwright/.auth/**'
     ],
   },
 ];

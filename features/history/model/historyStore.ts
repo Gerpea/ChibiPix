@@ -1,9 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import {
-  Frame,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
+import { Frame } from '@/features/animation/model/types';
 
 const deepCloneFrames = (frames: Frame[]): Frame[] => {
   return frames.map((frame) => ({

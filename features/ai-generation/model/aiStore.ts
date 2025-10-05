@@ -4,13 +4,8 @@ import { z } from 'zod';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { hexToInt } from '@/shared/utils/colors';
-import {
-  useAnimationStore,
-  type Layer,
-} from '@/features/animation/model/animationStore';
-
-// ... (Pixel schema, Generation/AIState interfaces, findEmpty16x16, and commitPixelsToLayer functions remain the same)
-// They are client-side logic and do not need changes.
+import { useAnimationStore } from '@/features/animation/model/animationStore';
+import { Layer } from '@/features/animation/model/types';
 
 const pixelSchema = z.array(
   z.object({
@@ -45,7 +40,6 @@ function findEmpty16x16(
   layers: Layer[],
   activeGenerations: Record<string, { startX: number; startY: number }>
 ): { startX: number; startY: number } {
-  // ... (Your existing findEmpty16x16 logic here)
   const occupied: Set<string> = new Set();
   const GAP = 2;
 
