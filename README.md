@@ -2,6 +2,8 @@
 
 Chibi-Pix is a user-friendly, web-based application for creating pixel art and simple animations. It provides an intuitive interface, making it accessible for both beginners and experienced artists to bring their pixelated creations to life.
 
+![AppScreen](readme/app_screen.png)
+
 ## Motivation
 
 This project was developed as a hands-on initiative to refresh and apply front-end development skills after a long break. The goal was to build a complete, functional web application using a modern tech stack, reinforcing core concepts in state management, UI development, and application architecture.

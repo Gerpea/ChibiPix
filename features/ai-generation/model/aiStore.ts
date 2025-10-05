@@ -1,5 +1,3 @@
-// src/features/ai/model/aiStore.ts
-
 import { z } from 'zod';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
@@ -109,12 +107,11 @@ export const useAIStore = create<AIState>()(
       startGeneration: async (prompt: string) => {
         const id = Date.now().toString();
 
-        // ... (Your client-side logic to find an area remains the same)
         const animationState = useAnimationStore.getState();
         const currentFrame =
           animationState.frames[animationState.currentFrameIndex];
         if (!currentFrame) {
-          /* handle error */ return;
+          return;
         }
         const { layers, activeLayerId } = currentFrame;
         const activeAIAreas = Object.entries(get().generations).reduce(
@@ -128,7 +125,7 @@ export const useAIStore = create<AIState>()(
         try {
           area = findEmpty16x16(layers, activeAIAreas);
         } catch (e) {
-          /* handle error */ return;
+          return;
         }
 
         const abortController = new AbortController();
@@ -173,7 +170,7 @@ export const useAIStore = create<AIState>()(
 
             buffer += decoder.decode(value, { stream: true });
             const messages = buffer.split('\n\n');
-            buffer = messages.pop() || ''; // Keep the last, possibly incomplete, message in buffer
+            buffer = messages.pop() || '';
 
             for (const message of messages) {
               if (message.startsWith('data: ')) {
@@ -181,7 +178,6 @@ export const useAIStore = create<AIState>()(
                   const jsonString = message.substring(6);
                   const data = JSON.parse(jsonString);
 
-                  // Update state based on the event type from the server
                   if (data.type === 'progress') {
                     set((state) => ({
                       generations: {
