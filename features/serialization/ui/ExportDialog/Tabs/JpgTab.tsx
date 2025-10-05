@@ -1,12 +1,9 @@
-import { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useState } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Loader2Icon } from 'lucide-react';
 import { CheckedState } from '@radix-ui/react-checkbox';
-import {
-  Frame,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { Checkbox } from '@/shared/ui/Checkbox';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
@@ -15,6 +12,7 @@ import { ProgressButton } from '../ProgressButton';
 import { exportFramesToJPG } from '@/features/serialization/lib/jpg';
 import { Slider } from '@/shared/ui/Slider';
 import { useExportContext } from '@/features/serialization/model/ExportContext';
+import { Frame } from '@/features/animation/model/types';
 
 export const JpgTab: React.FC = () => {
   const { frames } = useAnimationStore();

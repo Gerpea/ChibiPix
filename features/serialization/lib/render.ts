@@ -1,4 +1,4 @@
-import { Frame } from '@/features/animation/model/animationStore';
+import { Frame } from '@/features/animation/model/types';
 import { calculateFrameBounds } from './exportUtils';
 import { intToHex } from '@/shared/utils/colors';
 

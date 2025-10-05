@@ -7,9 +7,9 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
-import { Frame } from '@/features/animation/model/animationStore';
 import { DraggableItem } from './DraggableItem';
 import { useTheme } from 'next-themes';
+import { Frame } from '@/features/animation/model/types';
 
 interface SpritesheetPreviewProps {
   selectedFramesList: Frame[];

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Stage, Layer as KonvaLayer, Image as KonvaImage } from 'react-konva';
 import Konva from 'konva';
-import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
 import { PIXEL_SIZE } from '../const';
+import { Layer } from '@/features/animation/model/types';
 
 const MINIMAP_SIZE = 150;
 

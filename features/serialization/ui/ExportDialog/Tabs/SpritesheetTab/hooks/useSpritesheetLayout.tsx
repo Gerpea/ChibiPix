@@ -1,5 +1,5 @@
+import { Frame } from '@/features/animation/model/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Frame } from '@/features/animation/model/animationStore';
 
 interface TileSize {
   w: number;

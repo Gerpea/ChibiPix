@@ -1,5 +1,5 @@
+import { Frame } from '@/features/animation/model/types';
 import { useMemo } from 'react';
-import { Frame } from '@/features/animation/model/animationStore';
 
 export const useSpritesheetData = (
   frames: Frame[],

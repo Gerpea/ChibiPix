@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
 import { useTheme } from 'next-themes';
+import { Layer } from '@/features/animation/model/types';
 
 interface LayerPreviewProps {
   layer: Layer;

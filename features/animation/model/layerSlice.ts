@@ -1,7 +1,7 @@
 import { isPixelInActiveAIArea } from '@/features/ai-generation/lib/utils';
 import { useAIStore } from '@/features/ai-generation/model/aiStore';
 import { useHistoryStore } from '@/features/history/model/historyStore';
-import { AnimationState, Layer, Pixel } from './types';
+import { AnimationState, Layer, PersistedState, Pixel } from './types';
 import { StateCreator } from 'zustand';
 
 interface LayerSlice {

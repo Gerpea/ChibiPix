@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
-import { Frame } from '@/features/animation/model/animationStore';
 import { ExportPreview } from './ExportPreview';
+import { Frame } from '@/features/animation/model/types';
 
 interface DraggableItemProps {
   id: string;

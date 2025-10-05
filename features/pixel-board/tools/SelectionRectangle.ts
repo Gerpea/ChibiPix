@@ -1,12 +1,10 @@
 import Konva from 'konva';
-import {
-  Pixel,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
 import { Tool, ToolContext } from './Tool';
 import { PixelBoardStore, usePixelBoardStore } from '../model/pixelBoardStore';
 import { PIXEL_SIZE } from '../const';
+import { Pixel } from '@/features/animation/model/types';
 
 type RelPixel = { rx: number; ry: number; color: number };
 

@@ -12,12 +12,10 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
-import {
-  Layer,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { LayerPreview } from './LayerPreview';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/Tooltip';
+import { Layer } from '@/features/animation/model/types';
 
 interface LayerItemProps {
   id: string;

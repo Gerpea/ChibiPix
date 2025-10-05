@@ -1,4 +1,4 @@
-import { Frame } from '@/features/animation/model/animationStore';
+import { Frame } from '@/features/animation/model/types';
 
 export interface FrameBounds {
   minX: number;

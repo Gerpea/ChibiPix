@@ -1,4 +1,4 @@
-import { Pixel } from '@/features/animation/model/animationStore';
+import { Pixel } from '@/features/animation/model/types';
 
 interface Generation {
   isGenerating: boolean;

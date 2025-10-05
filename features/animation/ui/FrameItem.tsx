@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GripHorizontalIcon } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
-import { Layer, useAnimationStore } from '../model/animationStore';
+import { useAnimationStore } from '../model/animationStore';
 import { FramePreview } from './FramePreview';
+import { Layer } from '../model/types';
 
 interface FrameItemProps {
   id: string;

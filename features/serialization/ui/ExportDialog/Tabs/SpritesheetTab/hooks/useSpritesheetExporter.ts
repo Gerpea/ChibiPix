@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { saveAs } from 'file-saver';
-import { Frame, Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
+import { Frame, Layer } from '@/features/animation/model/types';
 
 interface UseSpritesheetExporterProps {
   selectedFramesList: Frame[];

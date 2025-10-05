@@ -3,10 +3,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Loader2Icon } from 'lucide-react';
 import { CheckedState } from '@radix-ui/react-checkbox';
-import {
-  Frame,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { Checkbox } from '@/shared/ui/Checkbox';
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
@@ -14,6 +11,7 @@ import { ExportPreviews } from '../ExportPreviews';
 import { ProgressButton } from '../ProgressButton';
 import { exportFramesToPNG } from '@/features/serialization/lib/png';
 import { useExportContext } from '@/features/serialization/model/ExportContext';
+import { Frame } from '@/features/animation/model/types';
 
 export const PngTab: React.FC = () => {
   const { frames } = useAnimationStore();

@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
-import { Layer } from '@/features/animation/model/animationStore';
 import { intToHex } from '@/shared/utils/colors';
 import { PIXEL_SIZE } from '@/features/pixel-board/const';
 import { useTheme } from 'next-themes';
+import { Layer } from '@/features/animation/model/types';
 
 interface ExportPreviewProps {
   frame: { id: string; name: string; layers: Layer[]; duration: number };

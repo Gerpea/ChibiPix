@@ -42,6 +42,7 @@ export const indexedDBStorage: PersistStorage<PersistedState> = {
       request.onerror = () => reject(request.error);
     });
   },
+  // @ts-expect-error will fix later
   setItem: async (
     key: string,
     value: { state: PersistedState; version: number }

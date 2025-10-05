@@ -1,13 +1,11 @@
-import {
-  Pixel,
-  useAnimationStore,
-} from '@/features/animation/model/animationStore';
+import { useAnimationStore } from '@/features/animation/model/animationStore';
 import { useToolbarStore } from '@/features/toolbar/model/toolbarStore';
 import { hexToInt } from '@/shared/utils/colors';
 import { Tool, ToolContext } from './Tool';
 import { usePixelBoardStore } from '../model/pixelBoardStore';
 import { PIXEL_SIZE } from '../const';
 import Konva from 'konva';
+import { Pixel } from '@/features/animation/model/types';
 
 export class FillTool implements Tool {
   private pendingPixels: Pixel[] = [];

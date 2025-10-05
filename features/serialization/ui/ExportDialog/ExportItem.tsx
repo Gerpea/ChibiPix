@@ -1,8 +1,8 @@
-import { Layer } from '@/features/animation/model/animationStore';
 import { useCallback, useMemo } from 'react';
 import { ExportPreview } from './ExportPreview';
 import { SquareCheckIcon, SquareIcon } from 'lucide-react';
 import { useExportContext } from '../../model/ExportContext';
+import { Layer } from '@/features/animation/model/types';
 
 interface FrameItemProps {
   frame: { id: string; name: string; layers: Layer[]; duration: number };

@@ -1,4 +1,4 @@
-import { Frame } from '@/features/animation/model/animationStore';
+import { Frame } from '@/features/animation/model/types';
 import { findMaxDimensions } from './exportUtils';
 import { renderFrameToCanvas } from './render';
 import GIF from 'gif.js';
